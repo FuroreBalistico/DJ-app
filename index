@@ -96,13 +96,31 @@
             background: #444;
             border-radius: 10px;
             overflow: hidden;
+            margin-bottom: 1rem;
+            display: none; /* Hide the old progress bar */
         }
 
-        .progress {
-            width: 0%;
+        .dual-view-container {
+            width: 100%;
+            height: 40px;
+            margin-bottom: 1rem;
+        }
+
+        .zoom-waveform {
+            width: 100%;
             height: 100%;
-            background: #007bff;
-            transition: width 0.1s linear;
+            background: #333;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .beat-marker {
+            position: absolute;
+            width: 2px;
+            background: #ff5500;
+            height: 100%;
+            opacity: 0.7;
         }
 
         button {
@@ -135,6 +153,37 @@
             text-align: center;
             margin: 1rem 0;
         }
+
+        /* Waveform styles */
+        .waveform-container {
+            width: 100%;
+            height: 80px;
+            background: #222;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .waveform-container:hover {
+            background: #2a2a2a;
+        }
+
+        .waveform-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .no-waveform {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #666;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
@@ -148,6 +197,15 @@
                 <h2>Deck 1</h2>
                 <input type="file" id="audio1" accept="audio/*">
                 <div class="track-info" id="track-info1">No track loaded</div>
+                <div class="waveform-container">
+                    <div class="no-waveform" id="no-waveform1">Load a track to see waveform</div>
+                    <canvas id="waveform1" class="waveform-canvas"></canvas>
+                </div>
+                <div class="dual-view-container">
+                    <div class="zoom-waveform" id="zoom-container1">
+                        <canvas id="zoom-waveform1" class="waveform-canvas"></canvas>
+                    </div>
+                </div>
                 <div class="progress-bar">
                     <div class="progress" id="progress1"></div>
                 </div>
@@ -169,6 +227,15 @@
                 <h2>Deck 2</h2>
                 <input type="file" id="audio2" accept="audio/*">
                 <div class="track-info" id="track-info2">No track loaded</div>
+                <div class="waveform-container">
+                    <div class="no-waveform" id="no-waveform2">Load a track to see waveform</div>
+                    <canvas id="waveform2" class="waveform-canvas"></canvas>
+                </div>
+                <div class="dual-view-container">
+                    <div class="zoom-waveform" id="zoom-container2">
+                        <canvas id="zoom-waveform2" class="waveform-canvas"></canvas>
+                    </div>
+                </div>
                 <div class="progress-bar">
                     <div class="progress" id="progress2"></div>
                 </div>
@@ -221,7 +288,12 @@
                 this.deckNumber = deckNumber;
                 this.audioSource = null;
                 this.gainNode = null;
+                this.analyserNode = null;
+                this.audioBuffer = null;
                 this.isPlaying = false;
+                this.animationFrame = null;
+                this.beatMarkers = [];
+                this.lastVisualizedBeat = 0;
                 
                 // DOM Elements
                 this.fileInput = document.getElementById(`audio${deckNumber}`);
@@ -230,6 +302,15 @@
                 this.speedSlider = document.getElementById(`speed${deckNumber}`);
                 this.trackInfo = document.getElementById(`track-info${deckNumber}`);
                 this.progressBar = document.getElementById(`progress${deckNumber}`);
+                this.waveformCanvas = document.getElementById(`waveform${deckNumber}`);
+                this.zoomWaveformCanvas = document.getElementById(`zoom-waveform${deckNumber}`);
+                this.zoomContainer = document.getElementById(`zoom-container${deckNumber}`);
+                this.noWaveformDiv = document.getElementById(`no-waveform${deckNumber}`);
+                
+                // Set up canvases
+                this.canvasCtx = this.waveformCanvas.getContext('2d');
+                this.zoomCanvasCtx = this.zoomWaveformCanvas.getContext('2d');
+                this.waveformCanvas.style.display = 'none';
                 
                 this.setupEventListeners();
             }
@@ -243,7 +324,7 @@
                 });
 
                 this.playBtn.addEventListener('click', () => {
-                    if (this.audioSource) {
+                    if (this.audioBuffer) {
                         if (this.isPlaying) {
                             this.pause();
                         } else {
@@ -263,6 +344,64 @@
                         this.audioSource.playbackRate.value = e.target.value / 100;
                     }
                 });
+                
+                // Make waveform clickable for navigation
+                this.waveformCanvas.addEventListener('click', (e) => {
+                    if (!this.audioBuffer) return;
+                    
+                    const rect = this.waveformCanvas.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const clickPosition = clickX / rect.width;
+                    
+                    // Calculate time to jump to
+                    const jumpTime = clickPosition * this.audioBuffer.duration;
+                    
+                    // If playing, stop current playback
+                    if (this.isPlaying) {
+                        this.audioSource.stop();
+                    }
+                    
+                    // Set new start time based on click position
+                    this.startTime = audioContext.currentTime - jumpTime;
+                    
+                    // If was playing, restart from new position
+                    if (this.isPlaying) {
+                        this.audioSource = audioContext.createBufferSource();
+                        this.audioSource.buffer = this.audioBuffer;
+                        this.audioSource.connect(this.analyserNode);
+                        this.audioSource.playbackRate.value = this.speedSlider.value / 100;
+                        this.audioSource.start(0, jumpTime);
+                    } else {
+                        // Update position without playing
+                        this.pauseTime = jumpTime;
+                        this.drawStaticWaveform();
+                        // Update progress bar
+                        const progress = (jumpTime / this.audioBuffer.duration) * 100;
+                        this.progressBar.style.width = `${Math.min(progress, 100)}%`;
+                    }
+                });
+                
+                // Resize waveform canvas when window resizes
+                window.addEventListener('resize', () => {
+                    this.resizeCanvas();
+                });
+            }
+            
+            resizeCanvas() {
+                // Main waveform
+                const container = this.waveformCanvas.parentElement;
+                this.waveformCanvas.width = container.clientWidth;
+                this.waveformCanvas.height = container.clientHeight;
+                
+                // Zoom waveform
+                const zoomContainer = this.zoomWaveformCanvas.parentElement;
+                this.zoomWaveformCanvas.width = zoomContainer.clientWidth;
+                this.zoomWaveformCanvas.height = zoomContainer.clientHeight;
+                
+                // Redraw waveform if we have data
+                if (this.audioBuffer) {
+                    this.drawStaticWaveform();
+                }
             }
 
             async loadTrack(file) {
@@ -272,33 +411,358 @@
                     }
 
                     const arrayBuffer = await file.arrayBuffer();
-                    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                    this.audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
                     // Create audio nodes
-                    this.audioSource = audioContext.createBufferSource();
+                    if (this.audioSource) {
+                        this.audioSource.disconnect();
+                    }
+                    
+                    // Create analyzer for waveform
+                    this.analyserNode = audioContext.createAnalyser();
+                    this.analyserNode.fftSize = 2048;
+                    this.bufferLength = this.analyserNode.frequencyBinCount;
+                    this.dataArray = new Uint8Array(this.bufferLength);
+                    
+                    // Connect nodes for future playback
                     this.gainNode = audioContext.createGain();
-
-                    // Connect nodes
-                    this.audioSource.buffer = audioBuffer;
-                    this.audioSource.connect(this.gainNode);
                     this.gainNode.connect(audioContext.destination);
+                    this.analyserNode.connect(this.gainNode);
 
                     // Set initial values
                     this.gainNode.gain.value = this.volumeSlider.value / 100;
-                    this.audioSource.playbackRate.value = this.speedSlider.value / 100;
 
                     // Update UI
                     this.trackInfo.textContent = file.name;
                     this.playBtn.disabled = false;
                     this.playBtn.textContent = "Play";
                     this.isPlaying = false;
+                    
+                    // Prepare waveform
+                    this.resizeCanvas();
+                    this.waveformCanvas.style.display = 'block';
+                    this.noWaveformDiv.style.display = 'none';
+                    
+                    // Detect beats in the track
+                    this.detectBeats();
+                    
+                    // Draw waveforms
+                    this.drawStaticWaveform();
 
                     // Setup progress tracking
-                    this.setupProgressTracking(audioBuffer.duration);
+                    this.setupProgressTracking(this.audioBuffer.duration);
 
                 } catch (error) {
                     showError(`Error loading track: ${error.message}`);
                 }
+            }
+            
+            detectBeats() {
+                // Clear existing beat markers
+                this.beatMarkers = [];
+                
+                // Get raw audio data
+                const rawData = this.audioBuffer.getChannelData(0);
+                const sampleRate = this.audioBuffer.sampleRate;
+                
+                // Process in small chunks to detect energy changes
+                const chunkSize = Math.floor(sampleRate / 100); // ~10ms chunks
+                const chunks = Math.floor(rawData.length / chunkSize);
+                
+                // Calculate energy for each chunk
+                const energies = [];
+                for (let i = 0; i < chunks; i++) {
+                    let energy = 0;
+                    const startSample = i * chunkSize;
+                    
+                    // Calculate RMS energy in this chunk
+                    for (let j = 0; j < chunkSize; j++) {
+                        if (startSample + j < rawData.length) {
+                            energy += rawData[startSample + j] * rawData[startSample + j];
+                        }
+                    }
+                    energy = Math.sqrt(energy / chunkSize);
+                    energies.push(energy);
+                }
+                
+                // Smoothing to remove noise
+                const smoothedEnergies = [];
+                const smoothingFactor = 5;
+                for (let i = 0; i < energies.length; i++) {
+                    let sum = 0;
+                    let count = 0;
+                    for (let j = Math.max(0, i - smoothingFactor); j <= Math.min(energies.length - 1, i + smoothingFactor); j++) {
+                        sum += energies[j];
+                        count++;
+                    }
+                    smoothedEnergies.push(sum / count);
+                }
+                
+                // Calculate a dynamic threshold based on recent energy
+                const thresholdWindowSize = 50; // Look at ~0.5 seconds for threshold
+                const beatSensitivity = 1.5; // Multiplier for threshold
+                
+                for (let i = 30; i < smoothedEnergies.length - 1; i++) { // Skip first 300ms
+                    // Calculate local energy average
+                    let sum = 0;
+                    for (let j = Math.max(0, i - thresholdWindowSize); j < i; j++) {
+                        sum += smoothedEnergies[j];
+                    }
+                    const localAverage = sum / Math.min(i, thresholdWindowSize);
+                    
+                    // Set dynamic threshold
+                    const threshold = localAverage * beatSensitivity;
+                    
+                    // Check if current energy is a local peak and crosses threshold
+                    if (smoothedEnergies[i] > threshold && 
+                        smoothedEnergies[i] > smoothedEnergies[i-1] && 
+                        smoothedEnergies[i] >= smoothedEnergies[i+1]) {
+                        
+                        // Convert chunk index to seconds
+                        const timeInSeconds = i * chunkSize / sampleRate;
+                        
+                        // Store beat position
+                        this.beatMarkers.push({
+                            time: timeInSeconds,
+                            strength: smoothedEnergies[i] / localAverage // Relative strength
+                        });
+                    }
+                }
+                
+                // Sort beats by strength to identify the stronger ones (likely kick drums)
+                this.beatMarkers.sort((a, b) => b.strength - a.strength);
+                
+                // Keep only the top 40% strongest beats
+                const kickThreshold = this.beatMarkers.length > 0 ? 
+                    this.beatMarkers[Math.floor(this.beatMarkers.length * 0.4)].strength : 0;
+                
+                this.beatMarkers = this.beatMarkers
+                    .filter(beat => beat.strength >= kickThreshold)
+                    .sort((a, b) => a.time - b.time); // Resort by time
+                
+                console.log(`Detected ${this.beatMarkers.length} kick drum beats`);
+            }
+            
+            drawStaticWaveform() {
+                const width = this.waveformCanvas.width;
+                const height = this.waveformCanvas.height;
+                const ctx = this.canvasCtx;
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, width, height);
+                
+                // If no buffer, nothing to draw
+                if (!this.audioBuffer) return;
+                
+                // Get the audio data
+                const rawData = this.audioBuffer.getChannelData(0); // Use first channel
+                const samples = 200; // Number of samples to display
+                const blockSize = Math.floor(rawData.length / samples);
+                const amplitudeData = [];
+                
+                // Collect amplitude data
+                for (let i = 0; i < samples; i++) {
+                    let sum = 0;
+                    for (let j = 0; j < blockSize; j++) {
+                        sum += Math.abs(rawData[(i * blockSize) + j] || 0);
+                    }
+                    amplitudeData.push(sum / blockSize);
+                }
+                
+                // Find the max amplitude for scaling
+                const maxAmplitude = Math.max(...amplitudeData) || 1;
+                
+                // Draw the waveform
+                ctx.beginPath();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#007bff';
+                
+                const sliceWidth = width / samples;
+                let x = 0;
+                
+                for (let i = 0; i < samples; i++) {
+                    const scaledAmplitude = (amplitudeData[i] / maxAmplitude) * height;
+                    const y = (height / 2) - (scaledAmplitude * 0.8); // Scale to 80% of half-height
+                    
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                    
+                    x += sliceWidth;
+                }
+                
+                // Complete the symmetric waveform by adding the bottom half
+                for (let i = samples - 1; i >= 0; i--) {
+                    const scaledAmplitude = (amplitudeData[i] / maxAmplitude) * height;
+                    const y = (height / 2) + (scaledAmplitude * 0.8); // Mirror the top half
+                    
+                    ctx.lineTo(x, y);
+                    x -= sliceWidth;
+                }
+                
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(0, 123, 255, 0.3)';
+                ctx.fill();
+                ctx.stroke();
+            }
+            
+            // Update waveform with playback position
+            updatePlaybackPosition() {
+                if (!this.isPlaying || !this.audioBuffer) {
+                    if (this.animationFrame) {
+                        cancelAnimationFrame(this.animationFrame);
+                        this.animationFrame = null;
+                    }
+                    return;
+                }
+                
+                // Get current position
+                const elapsed = audioContext.currentTime - this.startTime;
+                const position = elapsed / this.audioBuffer.duration;
+                const positionX = position * this.waveformCanvas.width;
+                
+                // Redraw main waveform
+                this.drawStaticWaveform();
+                
+                // Draw position line on main waveform
+                const ctx = this.canvasCtx;
+                const height = this.waveformCanvas.height;
+                
+                ctx.beginPath();
+                ctx.moveTo(positionX, 0);
+                ctx.lineTo(positionX, height);
+                ctx.strokeStyle = '#ff5500';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                
+                // Draw zoomed waveform with beat markers
+                this.drawZoomedWaveform(position, elapsed);
+                
+                // Continue animation loop
+                this.animationFrame = requestAnimationFrame(() => this.updatePlaybackPosition());
+            }
+            
+            drawZoomedWaveform(position, currentTime) {
+                const canvas = this.zoomWaveformCanvas;
+                const ctx = this.zoomCanvasCtx;
+                const width = canvas.width;
+                const height = canvas.height;
+                
+                // Clear canvas and container
+                ctx.clearRect(0, 0, width, height);
+                
+                // Clear any existing beat markers
+                const beatElements = this.zoomContainer.querySelectorAll('.beat-marker');
+                beatElements.forEach(el => el.remove());
+                
+                // If no buffer, nothing to draw
+                if (!this.audioBuffer) return;
+                
+                // Calculate the window to display (20% of the track centered on current position)
+                const windowDuration = 4; // Show 4 seconds of audio (2 seconds before and after current position)
+                const sampleRate = this.audioBuffer.sampleRate;
+                const samplesPerSecond = sampleRate;
+                const windowSamples = windowDuration * samplesPerSecond;
+                
+                // Get the audio data
+                const rawData = this.audioBuffer.getChannelData(0); // Use first channel
+                
+                // Calculate the window to display
+                const centerSample = Math.floor(position * rawData.length);
+                const startSample = Math.max(0, centerSample - windowSamples/2);
+                const endSample = Math.min(rawData.length, centerSample + windowSamples/2);
+                
+                // Sample points for drawing
+                const samples = 200;
+                const samplesPerPoint = Math.max(1, Math.floor((endSample - startSample) / samples));
+                
+                // Prepare amplitude data
+                const amplitudeData = [];
+                
+                for (let i = 0; i < samples; i++) {
+                    const sampleIndex = startSample + i * samplesPerPoint;
+                    if (sampleIndex >= endSample) break;
+                    
+                    let maxAmplitude = 0;
+                    for (let j = 0; j < samplesPerPoint; j++) {
+                        const sampleValue = Math.abs(rawData[sampleIndex + j] || 0);
+                        maxAmplitude = Math.max(maxAmplitude, sampleValue);
+                    }
+                    
+                    amplitudeData.push(maxAmplitude);
+                }
+                
+                // Find max amplitude for scaling
+                const maxValue = Math.max(...amplitudeData, 0.1);
+                
+                // Draw the zoomed waveform
+                ctx.beginPath();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#00c2ff'; // Brighter blue for zoomed view
+                
+                const sliceWidth = width / amplitudeData.length;
+                let x = 0;
+                
+                for (let i = 0; i < amplitudeData.length; i++) {
+                    const scaledAmplitude = (amplitudeData[i] / maxValue) * height;
+                    const y = (height / 2) - (scaledAmplitude * 0.8);
+                    
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                    
+                    x += sliceWidth;
+                }
+                
+                // Complete the symmetric waveform
+                for (let i = amplitudeData.length - 1; i >= 0; i--) {
+                    const scaledAmplitude = (amplitudeData[i] / maxValue) * height;
+                    const y = (height / 2) + (scaledAmplitude * 0.8);
+                    ctx.lineTo(x, y);
+                    x -= sliceWidth;
+                }
+                
+                ctx.fillStyle = 'rgba(0, 194, 255, 0.3)';
+                ctx.fill();
+                ctx.closePath();
+                ctx.stroke();
+                
+                // Draw center line indicating current position
+                ctx.beginPath();
+                ctx.moveTo(width / 2, 0);
+                ctx.lineTo(width / 2, height);
+                ctx.strokeStyle = '#ff5500';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Add beat markers that fall within the visible window
+                const startTime = currentTime - windowDuration/2;
+                const endTime = currentTime + windowDuration/2;
+                
+                // Filter to beats in the visible window
+                const visibleBeats = this.beatMarkers.filter(beat => 
+                    beat.time >= startTime && beat.time <= endTime);
+                
+                // Draw beat markers
+                visibleBeats.forEach(beat => {
+                    // Calculate position on the canvas
+                    const relativePosition = (beat.time - startTime) / windowDuration;
+                    const beatX = relativePosition * width;
+                    
+                    const marker = document.createElement('div');
+                    marker.className = 'beat-marker';
+                    marker.style.left = `${beatX}px`;
+                    
+                    // Make stronger beats more visible
+                    const opacity = Math.min(1, 0.5 + beat.strength * 0.5);
+                    marker.style.opacity = opacity.toString();
+                    
+                    this.zoomContainer.appendChild(marker);
+                });
             }
 
             setupProgressTracking(duration) {
@@ -321,18 +785,20 @@
             }
 
             play() {
-                if (this.audioSource && !this.isPlaying) {
+                if (this.audioBuffer && !this.isPlaying) {
                     // Create new source (needed after stopping)
-                    const oldSource = this.audioSource;
                     this.audioSource = audioContext.createBufferSource();
-                    this.audioSource.buffer = oldSource.buffer;
-                    this.audioSource.connect(this.gainNode);
+                    this.audioSource.buffer = this.audioBuffer;
+                    this.audioSource.connect(this.analyserNode);
                     this.audioSource.playbackRate.value = this.speedSlider.value / 100;
 
                     this.startTime = audioContext.currentTime;
                     this.audioSource.start(0);
                     this.isPlaying = true;
                     this.playBtn.textContent = "Pause";
+                    
+                    // Start playback position tracking
+                    this.updatePlaybackPosition();
                 }
             }
 
@@ -341,6 +807,31 @@
                     this.audioSource.stop();
                     this.isPlaying = false;
                     this.playBtn.textContent = "Play";
+                    
+                    // Stop animation
+                    if (this.animationFrame) {
+                        cancelAnimationFrame(this.animationFrame);
+                        this.animationFrame = null;
+                    }
+                    
+                    // Calculate current position
+                    const elapsed = audioContext.currentTime - this.startTime;
+                    this.pauseTime = elapsed;
+                    
+                    // Redraw static waveform with position marker
+                    this.drawStaticWaveform();
+                    
+                    // Draw position marker
+                    const positionX = (elapsed / this.audioBuffer.duration) * this.waveformCanvas.width;
+                    const ctx = this.canvasCtx;
+                    const height = this.waveformCanvas.height;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(positionX, 0);
+                    ctx.lineTo(positionX, height);
+                    ctx.strokeStyle = '#ff5500';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
                 }
             }
 
@@ -350,13 +841,33 @@
                     this.isPlaying = false;
                     this.playBtn.textContent = "Play";
                     this.progressBar.style.width = "0%";
+                    
+                    // Stop animation
+                    if (this.animationFrame) {
+                        cancelAnimationFrame(this.animationFrame);
+                        this.animationFrame = null;
+                    }
+                    
+                    // Redraw static waveform
+                    this.drawStaticWaveform();
                 }
             }
         }
 
-        // Initialize both decks
-        const deck1 = new DJDeck(1);
-        const deck2 = new DJDeck(2);
+        document.addEventListener('DOMContentLoaded', () => {
+            const deck1 = new DJDeck(1);
+            const deck2 = new DJDeck(2);
+            
+            // Resize canvases
+            deck1.resizeCanvas();
+            deck2.resizeCanvas();
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                deck1.resizeCanvas();
+                deck2.resizeCanvas();
+            });
+        });
     </script>
 </body>
 </html>
