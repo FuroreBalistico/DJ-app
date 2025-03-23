@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DJ Console</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .console, .about-section {
+        max-width: 1200px;
+        margin: 0 auto 2rem;
+        background: #2a2a2a;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        
+        .about-section h2 {
+        color: #007bff;
+        margin-bottom: 1rem;
+        }
+        
+        .about-section p {
+        margin-bottom: 1rem;
+        }
+
+        .deck-container {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .deck {
+            flex: 1;
+            min-width: 300px;
+            background: #333;
+            padding: 1.5rem;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .track-info {
+            text-align: center;
+            min-height: 3em;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .slider-container label {
+            min-width: 80px;
+        }
+
+        input[type="file"] {
+            display: block;
+            width: 100%;
+            padding: 0.5rem;
+            background: #444;
+            border-radius: 4px;
+            border: none;
+            color: white;
+        }
+
+        input[type="range"] {
+            flex: 1;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #444;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress {
+            width: 0%;
+            height: 100%;
+            background: #007bff;
+            transition: width 0.1s linear;
+        }
+
+        button {
+            padding: 0.5rem 1rem;
+            background: #007bff;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .title {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: #007bff;
+        }
+
+        .error {
+            color: #ff4444;
+            text-align: center;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="console">
+        <h1 class="title">Bassi e Tamburi</h1>
+        <h3 class="title">Drum and Bass</h3>
+        <div id="error-message" class="error"></div>
+        <div class="deck-container">
+            <!-- Deck 1 -->
+            <div class="deck">
+                <h2>Deck 1</h2>
+                <input type="file" id="audio1" accept="audio/*">
+                <div class="track-info" id="track-info1">No track loaded</div>
+                <div class="progress-bar">
+                    <div class="progress" id="progress1"></div>
+                </div>
+                <div class="controls">
+                    <button id="playBtn1" disabled>Play</button>
+                    <div class="slider-container">
+                        <label>Volume:</label>
+                        <input type="range" id="volume1" min="0" max="100" value="100">
+                    </div>
+                    <div class="slider-container">
+                        <label>Speed:</label>
+                        <input type="range" id="speed1" min="50" max="150" value="100">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Deck 2 -->
+            <div class="deck">
+                <h2>Deck 2</h2>
+                <input type="file" id="audio2" accept="audio/*">
+                <div class="track-info" id="track-info2">No track loaded</div>
+                <div class="progress-bar">
+                    <div class="progress" id="progress2"></div>
+                </div>
+                <div class="controls">
+                    <button id="playBtn2" disabled>Play</button>
+                    <div class="slider-container">
+                        <label>Volume:</label>
+                        <input type="range" id="volume2" min="0" max="100" value="100">
+                    </div>
+                    <div class="slider-container">
+                        <label>Speed:</label>
+                        <input type="range" id="speed2" min="50" max="150" value="100">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+  <div class="about-section">
+        <h2>About This Project</h2>
+        <p>Hi, I'm Svisionair, I wanted to rush the go live with this website project even though it's just the very foundation. This is my hobby, to build websites, create music and visuals. I like modern arts and new ways to express it.</p>
+        <div id="aboutContent"></div>
+    </div>
+
+
+    <script>
+        // Initialize AudioContext
+        let audioContext;
+        
+        // Try to initialize audio context on first user interaction
+        document.addEventListener('click', initializeAudioContext, { once: true });
+
+        function initializeAudioContext() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (e) {
+                showError("Could not initialize audio system. Please check your browser settings.");
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = message;
+            setTimeout(() => {
+                errorDiv.textContent = '';
+            }, 5000);
+        }
+
+        class DJDeck {
+            constructor(deckNumber) {
+                this.deckNumber = deckNumber;
+                this.audioSource = null;
+                this.gainNode = null;
+                this.isPlaying = false;
+                
+                // DOM Elements
+                this.fileInput = document.getElementById(`audio${deckNumber}`);
+                this.playBtn = document.getElementById(`playBtn${deckNumber}`);
+                this.volumeSlider = document.getElementById(`volume${deckNumber}`);
+                this.speedSlider = document.getElementById(`speed${deckNumber}`);
+                this.trackInfo = document.getElementById(`track-info${deckNumber}`);
+                this.progressBar = document.getElementById(`progress${deckNumber}`);
+                
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                this.fileInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        this.loadTrack(file);
+                    }
+                });
+
+                this.playBtn.addEventListener('click', () => {
+                    if (this.audioSource) {
+                        if (this.isPlaying) {
+                            this.pause();
+                        } else {
+                            this.play();
+                        }
+                    }
+                });
+
+                this.volumeSlider.addEventListener('input', (e) => {
+                    if (this.gainNode) {
+                        this.gainNode.gain.value = e.target.value / 100;
+                    }
+                });
+
+                this.speedSlider.addEventListener('input', (e) => {
+                    if (this.audioSource) {
+                        this.audioSource.playbackRate.value = e.target.value / 100;
+                    }
+                });
+            }
+
+            async loadTrack(file) {
+                try {
+                    if (!audioContext) {
+                        initializeAudioContext();
+                    }
+
+                    const arrayBuffer = await file.arrayBuffer();
+                    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+                    // Create audio nodes
+                    this.audioSource = audioContext.createBufferSource();
+                    this.gainNode = audioContext.createGain();
+
+                    // Connect nodes
+                    this.audioSource.buffer = audioBuffer;
+                    this.audioSource.connect(this.gainNode);
+                    this.gainNode.connect(audioContext.destination);
+
+                    // Set initial values
+                    this.gainNode.gain.value = this.volumeSlider.value / 100;
+                    this.audioSource.playbackRate.value = this.speedSlider.value / 100;
+
+                    // Update UI
+                    this.trackInfo.textContent = file.name;
+                    this.playBtn.disabled = false;
+                    this.playBtn.textContent = "Play";
+                    this.isPlaying = false;
+
+                    // Setup progress tracking
+                    this.setupProgressTracking(audioBuffer.duration);
+
+                } catch (error) {
+                    showError(`Error loading track: ${error.message}`);
+                }
+            }
+
+            setupProgressTracking(duration) {
+                if (this.progressInterval) {
+                    clearInterval(this.progressInterval);
+                }
+
+                this.startTime = 0;
+                this.progressInterval = setInterval(() => {
+                    if (this.isPlaying) {
+                        const elapsed = (audioContext.currentTime - this.startTime);
+                        const progress = (elapsed / duration) * 100;
+                        this.progressBar.style.width = `${Math.min(progress, 100)}%`;
+
+                        if (progress >= 100) {
+                            this.stop();
+                        }
+                    }
+                }, 100);
+            }
+
+            play() {
+                if (this.audioSource && !this.isPlaying) {
+                    // Create new source (needed after stopping)
+                    const oldSource = this.audioSource;
+                    this.audioSource = audioContext.createBufferSource();
+                    this.audioSource.buffer = oldSource.buffer;
+                    this.audioSource.connect(this.gainNode);
+                    this.audioSource.playbackRate.value = this.speedSlider.value / 100;
+
+                    this.startTime = audioContext.currentTime;
+                    this.audioSource.start(0);
+                    this.isPlaying = true;
+                    this.playBtn.textContent = "Pause";
+                }
+            }
+
+            pause() {
+                if (this.isPlaying) {
+                    this.audioSource.stop();
+                    this.isPlaying = false;
+                    this.playBtn.textContent = "Play";
+                }
+            }
+
+            stop() {
+                if (this.audioSource) {
+                    this.audioSource.stop();
+                    this.isPlaying = false;
+                    this.playBtn.textContent = "Play";
+                    this.progressBar.style.width = "0%";
+                }
+            }
+        }
+
+        // Initialize both decks
+        const deck1 = new DJDeck(1);
+        const deck2 = new DJDeck(2);
+    </script>
+</body>
+</html>
