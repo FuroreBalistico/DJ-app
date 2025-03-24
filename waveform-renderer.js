@@ -1,7 +1,7 @@
 /**
  * WaveformRenderer - Handles rendering of audio waveforms
  * 
- * This module provides functionality for drawing static and zoomed waveforms.
+ * This module provides functionality for drawing static and zoomed waveforms
  */
 class WaveformRenderer {
     /**
@@ -136,9 +136,9 @@ class WaveformRenderer {
         // Clear canvas
         ctx.clearRect(0, 0, width, height);
         
-        // Clear any existing beat markers
-        const beatElements = this.zoomContainer.querySelectorAll('.beat-marker, .main-beat-marker');
-        beatElements.forEach(el => el.remove());
+        // Clear any existing beat markers and center indicator
+        const elementsToRemove = this.zoomContainer.querySelectorAll('.beat-marker, .main-beat-marker, .center-position-indicator');
+        elementsToRemove.forEach(el => el.remove());
         
         // If no buffer, nothing to draw
         if (!audioBuffer) return;
@@ -214,44 +214,39 @@ class WaveformRenderer {
         ctx.closePath();
         ctx.stroke();
         
-        // Draw center line indicating current position
-        ctx.beginPath();
-        ctx.moveTo(width / 2, 0);
-        ctx.lineTo(width / 2, height);
-        ctx.strokeStyle = '#ff5500';
-        ctx.lineWidth = 2;
-        ctx.stroke();
+        // Add center position indicator (blue bar) as a DOM element
+        const centerIndicator = document.createElement('div');
+        centerIndicator.className = 'center-position-indicator';
+        this.zoomContainer.appendChild(centerIndicator);
         
         // Add beat markers that fall within the visible window
+        const startTime = currentTime - windowDuration/2;
+        const endTime = currentTime + windowDuration/2;
+        
+        // Filter to beats in the visible window
         if (beatMarkers && beatMarkers.length > 0) {
-            const startTime = currentTime - windowDuration/2;
-            const endTime = currentTime + windowDuration/2;
-            
-            // Filter to beats in the visible window
             const visibleBeats = beatMarkers.filter(beat => 
                 beat.time >= startTime && beat.time <= endTime);
             
             // Add visible beats as DOM elements
-            if (this.zoomContainer) {
-                visibleBeats.forEach(beat => {
-                    // Calculate position on the canvas
-                    const relativePosition = (beat.time - startTime) / windowDuration;
-                    const beatX = relativePosition * width;
-                    
-                    const marker = document.createElement('div');
-                    
-                    // Use different class for main beats (every 4th)
-                    if (beat.isMainBeat) {
-                        marker.className = 'main-beat-marker';
-                    } else {
-                        marker.className = 'beat-marker';
-                    }
-                    
-                    marker.style.left = `${beatX}px`;
-                    
-                    this.zoomContainer.appendChild(marker);
-                });
-            }
+            visibleBeats.forEach(beat => {
+                // Calculate position on the canvas
+                const relativePosition = (beat.time - startTime) / windowDuration;
+                const beatX = relativePosition * width;
+                
+                const marker = document.createElement('div');
+                
+                // Use different class for main beats (positions 1, 5, 9, 13...)
+                if (beat.isMainBeat) {
+                    marker.className = 'main-beat-marker';
+                } else {
+                    marker.className = 'beat-marker';
+                }
+                
+                marker.style.left = `${beatX}px`;
+                
+                this.zoomContainer.appendChild(marker);
+            });
         }
     }
 }
