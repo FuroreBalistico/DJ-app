@@ -1,40 +1,37 @@
 /**
  * BeatManager - Handles beat detection and manual tap tempo
  * 
- * This module manages the creation of beat markers based on manual taps.
+ * This module manages the beat markers based on manual taps.
  */
 class BeatManager {
     /**
      * Create a new beat manager
-     * @param {HTMLButtonElement} tapButton - Tap tempo button
+     * @param {HTMLButtonElement} tapTempoBtn - Tap tempo button
      */
-    constructor(tapButton) {
-        this.tapButton = tapButton;
+    constructor(tapTempoBtn) {
+        this.tapTempoBtn = tapTempoBtn;
         this.tapTimes = [];
         this.lastTapTime = 0;
         this.tapTempoActive = false;
         this.beatMarkers = [];
         this.bpm = 0;
-        
-        // Bind tap tempo button click
-        this.tapButton.addEventListener('click', () => this.handleTapTempo());
     }
-    
+
     /**
      * Handle tap tempo button click
-     * @param {AudioBuffer} audioBuffer - Current audio buffer (optional)
+     * @param {AudioBuffer} audioBuffer - Current audio buffer
      * @param {boolean} isPlaying - Whether audio is currently playing
      * @param {number} startTime - Audio context start time if playing
-     * @param {number} audioContextTime - Current audio context time if playing
+     * @param {number} currentTime - Current audio context time
      * @returns {boolean} - True if beat markers were updated
      */
-    handleTapTempo(audioBuffer = null, isPlaying = false, startTime = 0, audioContextTime = 0) {
+    handleTapTempo(audioBuffer, isPlaying, startTime, currentTime) {
         const now = performance.now();
         
         // Reset if it's been too long since last tap (more than 3 seconds)
         if (now - this.lastTapTime > 3000) {
             this.tapTimes = [];
-            this.tapButton.textContent = "Tap Tempo (1)";
+            this.tapTempoBtn.textContent = "Tap Tempo (1)";
             this.tapTempoActive = true;
         }
         
@@ -43,7 +40,7 @@ class BeatManager {
         
         // Update button to show tap count
         if (this.tapTempoActive) {
-            this.tapButton.textContent = `Tap Tempo (${this.tapTimes.length})`;
+            this.tapTempoBtn.textContent = `Tap Tempo (${this.tapTimes.length})`;
         }
         
         // Calculate BPM once we have at least 4 taps
@@ -53,7 +50,7 @@ class BeatManager {
         
         // Generate beat markers based on the tapped tempo if we have a track loaded
         if (audioBuffer && this.tapTimes.length >= 2) {
-            this.generateBeatsFromManualTaps(audioBuffer, isPlaying, startTime, audioContextTime);
+            this.generateBeatsFromManualTaps(audioBuffer, isPlaying, startTime, currentTime);
             return true;
         }
         
@@ -76,12 +73,9 @@ class BeatManager {
         const avgInterval = validIntervals.reduce((sum, val) => sum + val, 0) / validIntervals.length;
         
         // Convert to BPM (beats per minute)
-        const bpm = Math.round(60000 / avgInterval);
+        this.bpm = Math.round(60000 / avgInterval);
         
-        // Store BPM
-        this.bpm = bpm;
-        
-        return bpm;
+        return this.bpm;
     }
     
     /**
@@ -111,9 +105,9 @@ class BeatManager {
      * @param {AudioBuffer} audioBuffer - The decoded audio data
      * @param {boolean} isPlaying - Whether audio is currently playing
      * @param {number} startTime - Audio context start time if playing
-     * @param {number} audioContextTime - Current audio context time if playing
+     * @param {number} currentTime - Current audio context time
      */
-    generateBeatsFromManualTaps(audioBuffer, isPlaying, startTime, audioContextTime) {
+    generateBeatsFromManualTaps(audioBuffer, isPlaying, startTime, currentTime) {
         if (!audioBuffer || this.tapTimes.length < 2) return;
         
         // Clear existing beat markers
@@ -134,7 +128,7 @@ class BeatManager {
         // Calculate when the first beat occurred relative to track start
         // This assumes the user started tapping in time with the track
         const firstTapTime = isPlaying ? 
-            (this.tapTimes[0] / 1000) - (audioContextTime - startTime) : 
+            (this.tapTimes[0] / 1000) - (currentTime - startTime) : 
             0; // If not playing, assume start of track
         
         // Generate beats for the entire track
@@ -143,17 +137,28 @@ class BeatManager {
         // Generate beats before the first tap (if first tap wasn't at the start)
         if (firstTapTime > 0) {
             let time = firstTapTime;
-            let beatCount = 0;
+            let beatPosition = 1; // Start with position 1 for the first tap
+            
+            // Count backwards to maintain the correct pattern (1, 5, 9, 13...)
             while (time > 0) {
                 time -= beatInterval;
                 if (time >= 0) {
-                    beatCount++;
+                    beatPosition--;
+                    
+                    // To maintain the pattern going backwards, we calculate the equivalent "forward" position
+                    // This ensures the 1, 5, 9, 13... pattern works in both directions
+                    let normalizedPosition = beatPosition;
+                    while (normalizedPosition <= 0) normalizedPosition += 4;
+                    
+                    // Check if this would be a main beat (1, 5, 9, 13...)
+                    const isMainBeat = (normalizedPosition % 4) === 1;
+                    
                     this.beatMarkers.push({
                         time: time,
                         strength: 1.0,
                         isKick: false,
-                        // First tap is considered beat 0, so we're going backwards
-                        isMainBeat: beatCount % 4 === 0
+                        isMainBeat: isMainBeat,
+                        position: beatPosition // Store the absolute position
                     });
                 }
             }
@@ -161,21 +166,22 @@ class BeatManager {
         
         // Generate beats forward from the first tap
         let time = firstTapTime;
-        let beatCount = 0; // Start count from 0 for the first tap
+        let beatPosition = 1; // First tap is position 1 (will be green)
         
         while (time < trackDuration) {
-            // Every 4th beat (starting with the first tap) is a main beat (green)
-            const isMainBeat = beatCount % 4 === 0;
+            // Main beats at positions 1, 5, 9, 13... following the pattern 1 + 4x
+            const isMainBeat = (beatPosition % 4) === 1;
             
             this.beatMarkers.push({
                 time: time,
                 strength: 1.0,
                 isKick: false,
-                isMainBeat: isMainBeat
+                isMainBeat: isMainBeat,
+                position: beatPosition // Store the absolute position
             });
             
             time += beatInterval;
-            beatCount++;
+            beatPosition++;
         }
         
         // Sort all markers by time
@@ -185,19 +191,19 @@ class BeatManager {
     }
     
     /**
-     * Get the generated beat markers
-     * @returns {Array} - Array of beat marker objects
-     */
-    getBeatMarkers() {
-        return this.beatMarkers;
-    }
-    
-    /**
-     * Get the calculated BPM
-     * @returns {number} - BPM value
+     * Get the current BPM
+     * @returns {number} - The current BPM
      */
     getBPM() {
         return this.bpm;
+    }
+    
+    /**
+     * Get the beat markers
+     * @returns {Array} - The beat markers
+     */
+    getBeatMarkers() {
+        return this.beatMarkers;
     }
     
     /**
