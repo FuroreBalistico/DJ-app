@@ -20,21 +20,21 @@
         }
 
         .console, .about-section {
-        max-width: 1200px;
-        margin: 0 auto 2rem;
-        background: #2a2a2a;
-        padding: 2rem;
-        border-radius: 10px;
-        box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            max-width: 1200px;
+            margin: 0 auto 2rem;
+            background: #2a2a2a;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
         
         .about-section h2 {
-        color: #007bff;
-        margin-bottom: 1rem;
+            color: #007bff;
+            margin-bottom: 1rem;
         }
         
         .about-section p {
-        margin-bottom: 1rem;
+            margin-bottom: 1rem;
         }
 
         .deck-container {
@@ -130,7 +130,7 @@
             border-radius: 10px;
             overflow: hidden;
             margin-bottom: 1rem;
-            display: none; /* Hide the old progress bar */
+            display: none;
         }
 
         .dual-view-container {
@@ -151,7 +151,7 @@
 
         .beat-marker {
             position: absolute;
-            width: 4px;
+            width: 2px;
             background-color: #ff5500;
             height: 100%;
             top: 0;
@@ -160,7 +160,7 @@
         
         .main-beat-marker {
             position: absolute;
-            width: 4px;
+            width: 3px;
             background-color: #00ff66;
             height: 100%;
             top: 0;
@@ -198,7 +198,6 @@
             margin: 1rem 0;
         }
 
-        /* Waveform styles */
         .waveform-container {
             width: 100%;
             height: 80px;
@@ -303,12 +302,11 @@
             </div>
         </div>
     </div>
-  <div class="about-section">
+    <div class="about-section">
         <h2>About This Project</h2>
         <p>Hi, I'm Svisionair, I wanted to rush the go live with this website project even though it's just the very foundation. This is my hobby, to build websites, create music and visuals. I like modern arts and new ways to express it.</p>
         <div id="aboutContent"></div>
     </div>
-
 
     <script>
         // Initialize AudioContext
@@ -320,6 +318,7 @@
         function initializeAudioContext() {
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                console.log('Audio context initialized');
             } catch (e) {
                 showError("Could not initialize audio system. Please check your browser settings.");
             }
@@ -327,10 +326,13 @@
 
         function showError(message) {
             const errorDiv = document.getElementById('error-message');
-            errorDiv.textContent = message;
-            setTimeout(() => {
-                errorDiv.textContent = '';
-            }, 5000);
+            if (errorDiv) {
+                errorDiv.textContent = message;
+                setTimeout(() => {
+                    errorDiv.textContent = '';
+                }, 5000);
+            }
+            console.error(message);
         }
 
         class DJDeck {
@@ -345,6 +347,7 @@
                 this.beatMarkers = [];
                 this.lastVisualizedBeat = 0;
                 this.bpm = 0;
+                this.pauseTime = 0;
                 
                 // Tap tempo related properties
                 this.tapTimes = [];
@@ -437,6 +440,10 @@
                         // Update position without playing
                         this.pauseTime = jumpTime;
                         this.drawStaticWaveform();
+                        
+                        // Draw the zoomed view at the clicked position
+                        this.drawZoomedWaveform(jumpTime / this.audioBuffer.duration, jumpTime);
+                        
                         // Update progress bar
                         const progress = (jumpTime / this.audioBuffer.duration) * 100;
                         this.progressBar.style.width = `${Math.min(progress, 100)}%`;
@@ -462,14 +469,9 @@
                 this.tapTimes.push(now);
                 this.lastTapTime = now;
                 
-                // Limit to last 12 taps as requested
-                if (this.tapTimes.length > 12) {
-                    this.tapTimes.shift();
-                }
-                
                 // Update button to show tap count
-                if (this.tapTimes.length < 12) {
-                    this.tapTempoBtn.textContent = `Tap Tempo (${this.tapTimes.length + 1})`;
+                if (this.tapTempoActive) {
+                    this.tapTempoBtn.textContent = `Tap Tempo (${this.tapTimes.length})`;
                 }
                 
                 // Calculate BPM once we have at least 4 taps
@@ -477,15 +479,9 @@
                     this.calculateTapTempo();
                 }
                 
-                // When we reach 12 taps, apply the BPM to beat markers
-                if (this.tapTimes.length === 12) {
-                    this.tapTempoBtn.textContent = "Tap Tempo";
-                    this.tapTempoActive = false;
-                    
-                    // Generate beat markers based on the tapped tempo if we have a track loaded
-                    if (this.audioBuffer) {
-                        this.generateBeatsFromTempo();
-                    }
+                // Generate beat markers based on the tapped tempo if we have a track loaded
+                if (this.audioBuffer && this.tapTimes.length >= 2) {
+                    this.generateBeatsFromManualTaps();
                 }
             }
             
@@ -527,58 +523,75 @@
                 );
             }
             
-            generateBeatsFromTempo() {
-                if (!this.bpm || this.bpm < 30 || !this.audioBuffer) return;
-                
-                // Store the kicks we've already detected
-                const existingKicks = [...this.beatMarkers];
+            generateBeatsFromManualTaps() {
+                if (!this.audioBuffer || this.tapTimes.length < 2) return;
                 
                 // Clear existing beat markers
                 this.beatMarkers = [];
                 
-                // Calculate beat interval in seconds
-                const beatInterval = 60 / this.bpm;
+                // Calculate average interval between taps
+                const intervals = [];
+                for (let i = 1; i < this.tapTimes.length; i++) {
+                    intervals.push(this.tapTimes[i] - this.tapTimes[i-1]);
+                }
+                
+                // Calculate average interval in milliseconds
+                const avgInterval = intervals.reduce((sum, val) => sum + val, 0) / intervals.length;
+                
+                // Convert to seconds
+                const beatInterval = avgInterval / 1000;
+                
+                // Calculate when the first beat occurred relative to track start
+                // This assumes the user started tapping in time with the track
+                const firstTapTime = this.isPlaying ? 
+                    (this.tapTimes[0] / 1000) - (audioContext.currentTime - this.startTime) : 
+                    0; // If not playing, assume start of track
                 
                 // Generate beats for the entire track
                 const trackDuration = this.audioBuffer.duration;
-                const beatCount = Math.floor(trackDuration / beatInterval);
                 
-                // Add a beat marker for each beat
-                for (let i = 0; i < beatCount; i++) {
-                    const beatTime = i * beatInterval;
-                    
-                    // Every 4th beat is a main beat (typically where the kick would be in D&B)
-                    const isMainBeat = i % 4 === 0;
+                // Generate beats before the first tap (if first tap wasn't at the start)
+                if (firstTapTime > 0) {
+                    let time = firstTapTime;
+                    let beatCount = 0;
+                    while (time > 0) {
+                        time -= beatInterval;
+                        if (time >= 0) {
+                            beatCount++;
+                            this.beatMarkers.push({
+                                time: time,
+                                strength: 1.0,
+                                isKick: false,
+                                // First tap is considered beat 0, so we're going backwards
+                                isMainBeat: beatCount % 4 === 0
+                            });
+                        }
+                    }
+                }
+                
+                // Generate beats forward from the first tap
+                let time = firstTapTime;
+                let beatCount = 0; // Start count from 0 for the first tap
+                
+                while (time < trackDuration) {
+                    // Every 4th beat (starting with the first tap) is a main beat (green)
+                    const isMainBeat = beatCount % 4 === 0;
                     
                     this.beatMarkers.push({
-                        time: beatTime,
+                        time: time,
                         strength: 1.0,
                         isKick: false,
                         isMainBeat: isMainBeat
                     });
-                }
-                
-                // Add back the kick markers we detected
-                for (const kick of existingKicks) {
-                    // Find the closest beat to this kick
-                    const closestBeatIndex = this.findClosestBeatIndex(kick.time);
                     
-                    // Only add the kick if it's not too close to an existing beat (to avoid duplicates)
-                    if (closestBeatIndex === -1 || 
-                        Math.abs(this.beatMarkers[closestBeatIndex].time - kick.time) > 0.1) {
-                        this.beatMarkers.push({
-                            time: kick.time,
-                            strength: kick.strength,
-                            isKick: true,
-                            isMainBeat: false
-                        });
-                    }
+                    time += beatInterval;
+                    beatCount++;
                 }
                 
                 // Sort all markers by time
                 this.beatMarkers.sort((a, b) => a.time - b.time);
                 
-                console.log(`Generated ${this.beatMarkers.length} beats and kicks based on ${this.bpm} BPM tempo`);
+                console.log(`Generated ${this.beatMarkers.length} beats based on manual taps with ${beatInterval.toFixed(3)}s interval`);
                 
                 // Update the BPM display
                 this.updateBpmDisplay();
@@ -610,23 +623,6 @@
                         this.drawZoomedWaveform(position, this.pauseTime);
                     }
                 }
-            }
-            
-            findClosestBeatIndex(time) {
-                if (this.beatMarkers.length === 0) return -1;
-                
-                let closestIndex = 0;
-                let closestDistance = Math.abs(this.beatMarkers[0].time - time);
-                
-                for (let i = 1; i < this.beatMarkers.length; i++) {
-                    const distance = Math.abs(this.beatMarkers[i].time - time);
-                    if (distance < closestDistance) {
-                        closestDistance = distance;
-                        closestIndex = i;
-                    }
-                }
-                
-                return closestIndex;
             }
             
             updateBpmDisplay() {
@@ -689,193 +685,21 @@
                     this.playBtn.disabled = false;
                     this.playBtn.textContent = "Play";
                     this.isPlaying = false;
+                    this.pauseTime = 0;
                     
                     // Prepare waveform
                     this.resizeCanvas();
                     this.waveformCanvas.style.display = 'block';
                     this.noWaveformDiv.style.display = 'none';
                     
-                    // Detect beats in the track using a temporary audio context for offline processing
-                    await this.detectKickDrums();
+                    // Reset beat markers
+                    this.beatMarkers = [];
                     
                     // Draw waveforms
                     this.drawStaticWaveform();
 
-                    // Setup progress tracking
-                    this.setupProgressTracking(this.audioBuffer.duration);
-
                 } catch (error) {
                     showError(`Error loading track: ${error.message}`);
-                }
-            }
-            
-            async detectKickDrums() {
-                // Clear existing beat markers
-                this.beatMarkers = [];
-                
-                // Create an offline audio context for processing
-                const offlineCtx = new OfflineAudioContext(
-                    1, // mono
-                    this.audioBuffer.length,
-                    this.audioBuffer.sampleRate
-                );
-                
-                // Create a source from our buffer
-                const source = offlineCtx.createBufferSource();
-                source.buffer = this.audioBuffer;
-                
-                // Create a low-pass filter to isolate frequencies below 150Hz (tighter for drum & bass)
-                const lowPassFilter = offlineCtx.createBiquadFilter();
-                lowPassFilter.type = "lowpass";
-                lowPassFilter.frequency.value = 150; // Lower to 150Hz for more precise kick detection
-                lowPassFilter.Q.value = 1.2; // Slightly steeper roll-off
-                
-                // Connect source to filter
-                source.connect(lowPassFilter);
-                
-                // Connect filter to destination
-                lowPassFilter.connect(offlineCtx.destination);
-                
-                // Start the source
-                source.start(0);
-                
-                // Process the audio
-                const filteredBuffer = await offlineCtx.startRendering();
-                
-                // Get the filtered data
-                const filteredData = filteredBuffer.getChannelData(0);
-                const sampleRate = filteredBuffer.sampleRate;
-                
-                // Process in small chunks to detect energy changes
-                const chunkSize = Math.floor(sampleRate / 80); // ~12.5ms chunks for better resolution
-                const chunks = Math.floor(filteredData.length / chunkSize);
-                
-                // Calculate energy for each chunk
-                const energies = [];
-                for (let i = 0; i < chunks; i++) {
-                    let energy = 0;
-                    const startSample = i * chunkSize;
-                    
-                    // Calculate RMS energy in this chunk
-                    for (let j = 0; j < chunkSize; j++) {
-                        if (startSample + j < filteredData.length) {
-                            energy += filteredData[startSample + j] * filteredData[startSample + j];
-                        }
-                    }
-                    energy = Math.sqrt(energy / chunkSize);
-                    energies.push(energy);
-                }
-                
-                // Normalize the energy values
-                const maxEnergy = Math.max(...energies);
-                const normalizedEnergies = energies.map(e => e / maxEnergy);
-                
-                // Find rapid energy increases (characteristic of kick drums)
-                const derivatives = [0]; // Start with 0 for the first chunk
-                for (let i = 1; i < normalizedEnergies.length; i++) {
-                    derivatives.push(normalizedEnergies[i] - normalizedEnergies[i-1]);
-                }
-                
-                // Use a dynamic threshold based on the energy derivative statistics
-                const nonZeroDerivatives = derivatives.filter(d => d > 0);
-                const mean = nonZeroDerivatives.reduce((sum, val) => sum + val, 0) / nonZeroDerivatives.length;
-                const threshold = mean * 3.0; // Increased threshold to reduce false positives
-                
-                // Minimum time between kicks (in chunks) - for drum & bass typically 174 BPM or ~345ms between beats
-                const minChunksBetweenKicks = Math.floor(0.3 * sampleRate / chunkSize); // 300ms minimum
-                let lastKickChunk = -minChunksBetweenKicks;
-                
-                // Detect the kick drums
-                for (let i = 1; i < derivatives.length; i++) {
-                    if (derivatives[i] > threshold && 
-                        normalizedEnergies[i] > 0.15 && // Higher minimum energy threshold
-                        i - lastKickChunk >= minChunksBetweenKicks) {
-                        
-                        // Convert chunk index to seconds
-                        const timeInSeconds = i * chunkSize / sampleRate;
-                        
-                        // Store kick position
-                        this.beatMarkers.push({
-                            time: timeInSeconds,
-                            strength: derivatives[i] / threshold // Relative strength
-                        });
-                        
-                        lastKickChunk = i;
-                    }
-                }
-                
-                // Keep only the strongest beats - focus on real kicks
-                this.beatMarkers.sort((a, b) => b.strength - a.strength);
-                
-                // More conservative kick selection for D&B
-                const kickCount = Math.min(
-                    this.beatMarkers.length, 
-                    Math.ceil(this.audioBuffer.duration / 0.6) // Even fewer kicks for D&B (only the strongest)
-                );
-                
-                // Keep only the strongest beats
-                this.beatMarkers = this.beatMarkers
-                    .slice(0, kickCount)
-                    .sort((a, b) => a.time - b.time); // Resort by time
-                
-                // Calculate BPM from beats
-                this.detectBPM();
-                
-                console.log(`Detected ${this.beatMarkers.length} kick drums`);
-            }
-            
-            detectBPM() {
-                if (this.beatMarkers.length < 4) {
-                    this.bpm = 0;
-                    return;
-                }
-                
-                // Calculate intervals between beats
-                const intervals = [];
-                for (let i = 1; i < this.beatMarkers.length; i++) {
-                    intervals.push(this.beatMarkers[i].time - this.beatMarkers[i-1].time);
-                }
-                
-                // Group similar intervals together (clustering)
-                const intervalClusters = {};
-                
-                intervals.forEach(interval => {
-                    // Round to nearest 10ms for clustering
-                    const roundedInterval = Math.round(interval * 100) / 100;
-                    
-                    // Only consider reasonable intervals for D&B (typically 160-180 BPM)
-                    if (roundedInterval > 0.25 && roundedInterval < 0.5) {
-                        intervalClusters[roundedInterval] = (intervalClusters[roundedInterval] || 0) + 1;
-                    }
-                });
-                
-                // Find the most common interval
-                let mostCommonInterval = 0;
-                let maxCount = 0;
-                
-                for (const interval in intervalClusters) {
-                    if (intervalClusters[interval] > maxCount) {
-                        maxCount = intervalClusters[interval];
-                        mostCommonInterval = parseFloat(interval);
-                    }
-                }
-                
-                // Convert to BPM
-                if (mostCommonInterval > 0) {
-                    this.bpm = Math.round(60 / mostCommonInterval);
-                    
-                    // Typical D&B is 160-180 BPM, adjust if necessary
-                    if (this.bpm < 80) {
-                        this.bpm = this.bpm * 2; // Probably half-tempo detection
-                    } else if (this.bpm > 190) {
-                        this.bpm = this.bpm / 2; // Probably double-tempo detection
-                    }
-                    
-                    // Update track info with BPM
-                    const trackName = this.trackInfo.textContent;
-                    this.trackInfo.innerHTML = `${trackName} <span class="bpm-badge">${this.bpm} BPM</span>`;
-                } else {
-                    this.bpm = 0;
                 }
             }
             
@@ -959,6 +783,12 @@
                 const position = elapsed / this.audioBuffer.duration;
                 const positionX = position * this.waveformCanvas.width;
                 
+                // Check if playback is finished
+                if (position >= 1) {
+                    this.stop();
+                    return;
+                }
+                
                 // Redraw main waveform
                 this.drawStaticWaveform();
                 
@@ -990,7 +820,7 @@
                 ctx.clearRect(0, 0, width, height);
                 
                 // Clear any existing beat markers
-                const beatElements = this.zoomContainer.querySelectorAll('.beat-marker');
+                const beatElements = this.zoomContainer.querySelectorAll('.beat-marker, .main-beat-marker');
                 beatElements.forEach(el => el.remove());
                 
                 // If no buffer, nothing to draw
@@ -1091,31 +921,19 @@
                         const beatX = relativePosition * width;
                         
                         const marker = document.createElement('div');
-                        marker.className = 'beat-marker';
+                        
+                        // Use different class for main beats (every 4th)
+                        if (beat.isMainBeat) {
+                            marker.className = 'main-beat-marker';
+                        } else {
+                            marker.className = 'beat-marker';
+                        }
+                        
                         marker.style.left = `${beatX}px`;
                         
                         this.zoomContainer.appendChild(marker);
                     });
                 }
-            }
-
-            setupProgressTracking(duration) {
-                if (this.progressInterval) {
-                    clearInterval(this.progressInterval);
-                }
-
-                this.startTime = 0;
-                this.progressInterval = setInterval(() => {
-                    if (this.isPlaying) {
-                        const elapsed = (audioContext.currentTime - this.startTime);
-                        const progress = (elapsed / duration) * 100;
-                        this.progressBar.style.width = `${Math.min(progress, 100)}%`;
-
-                        if (progress >= 100) {
-                            this.stop();
-                        }
-                    }
-                }, 100);
             }
 
             play() {
@@ -1125,9 +943,16 @@
                     this.audioSource.buffer = this.audioBuffer;
                     this.audioSource.connect(this.analyserNode);
                     this.audioSource.playbackRate.value = this.speedSlider.value / 100;
-
-                    this.startTime = audioContext.currentTime;
-                    this.audioSource.start(0);
+                    
+                    // If resuming from pause, start from pause position
+                    if (this.pauseTime) {
+                        this.startTime = audioContext.currentTime - this.pauseTime;
+                        this.audioSource.start(0, this.pauseTime);
+                    } else {
+                        this.startTime = audioContext.currentTime;
+                        this.audioSource.start(0);
+                    }
+                    
                     this.isPlaying = true;
                     this.playBtn.textContent = "Pause";
                     
@@ -1166,6 +991,9 @@
                     ctx.strokeStyle = '#ff5500';
                     ctx.lineWidth = 3;
                     ctx.stroke();
+                    
+                    // Draw zoomed waveform at pause position
+                    this.drawZoomedWaveform(elapsed / this.audioBuffer.duration, elapsed);
                 }
             }
 
@@ -1174,7 +1002,7 @@
                     this.audioSource.stop();
                     this.isPlaying = false;
                     this.playBtn.textContent = "Play";
-                    this.progressBar.style.width = "0%";
+                    this.pauseTime = 0;
                     
                     // Stop animation
                     if (this.animationFrame) {
@@ -1184,11 +1012,16 @@
                     
                     // Redraw static waveform
                     this.drawStaticWaveform();
+                    
+                    // Clear beat markers in zoom view
+                    const beatElements = this.zoomContainer.querySelectorAll('.beat-marker, .main-beat-marker');
+                    beatElements.forEach(el => el.remove());
                 }
             }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Initialize decks
             const deck1 = new DJDeck(1);
             const deck2 = new DJDeck(2);
             
@@ -1201,6 +1034,8 @@
                 deck1.resizeCanvas();
                 deck2.resizeCanvas();
             });
+            
+            console.log('DJ Console initialized');
         });
     </script>
 </body>
