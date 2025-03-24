@@ -1,10 +1,10 @@
 /**
- * AudioContextManager - Handles the Web Audio API context
+ * AudioContextManager - Manages the Web Audio API context
  * 
- * This module provides a singleton to manage our AudioContext instance
- * and provides utility functions for audio-related errors.
+ * This module provides a singleton to manage the audio context
+ * and related utility functions.
  */
-const AudioContextManager = (() => {
+const AudioContextManager = (function() {
     // Private variables
     let audioContext = null;
     const errorDiv = document.getElementById('error-message');
