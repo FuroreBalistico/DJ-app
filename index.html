@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DJ Console</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="console">
+        <h1 class="title">Bassi e Tamburi</h1>
+        <h3 class="title">Drum and Bass</h3>
+        <div id="error-message" class="error"></div>
+        <div class="deck-container">
+            <!-- Deck 1 -->
+            <div class="deck">
+                <h2>Deck 1</h2>
+                <input type="file" id="audio1" accept="audio/*">
+                <div class="track-info" id="track-info1">No track loaded</div>
+                <div class="waveform-container">
+                    <div class="no-waveform" id="no-waveform1">Load a track to see waveform</div>
+                    <canvas id="waveform1" class="waveform-canvas"></canvas>
+                </div>
+                <div class="dual-view-container">
+                    <div class="zoom-waveform" id="zoom-container1">
+                        <canvas id="zoom-waveform1" class="waveform-canvas"></canvas>
+                    </div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress" id="progress1"></div>
+                </div>
+                <div class="controls">
+                    <div class="button-row">
+                        <button id="playBtn1" disabled>Play</button>
+                        <button id="tapTempo1" class="tap-tempo">Tap Tempo</button>
+                    </div>
+                    <div class="slider-container">
+                        <label>Volume:</label>
+                        <input type="range" id="volume1" min="0" max="100" value="100">
+                    </div>
+                    <div class="slider-container">
+                        <label>Speed:</label>
+                        <input type="range" id="speed1" min="50" max="150" value="100">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Deck 2 -->
+            <div class="deck">
+                <h2>Deck 2</h2>
+                <input type="file" id="audio2" accept="audio/*">
+                <div class="track-info" id="track-info2">No track loaded</div>
+                <div class="waveform-container">
+                    <div class="no-waveform" id="no-waveform2">Load a track to see waveform</div>
+                    <canvas id="waveform2" class="waveform-canvas"></canvas>
+                </div>
+                <div class="dual-view-container">
+                    <div class="zoom-waveform" id="zoom-container2">
+                        <canvas id="zoom-waveform2" class="waveform-canvas"></canvas>
+                    </div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress" id="progress2"></div>
+                </div>
+                <div class="controls">
+                    <div class="button-row">
+                        <button id="playBtn2" disabled>Play</button>
+                        <button id="tapTempo2" class="tap-tempo">Tap Tempo</button>
+                    </div>
+                    <div class="slider-container">
+                        <label>Volume:</label>
+                        <input type="range" id="volume2" min="0" max="100" value="100">
+                    </div>
+                    <div class="slider-container">
+                        <label>Speed:</label>
+                        <input type="range" id="speed2" min="50" max="150" value="100">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="about-section">
+        <h2>About This Project</h2>
+        <p>Hi, I'm Svisionair, I wanted to rush the go live with this website project even though it's just the very foundation. This is my hobby, to build websites, create music and visuals. I like modern arts and new ways to express it.</p>
+        <div id="aboutContent"></div>
+    </div>
+
+    <!-- Load modules in the correct order -->
+    <script src="js/audio-context.js"></script>
+    <script src="js/waveform-renderer.js"></script>
+    <script src="js/beat-manager.js"></script>
+    <script src="js/dj-deck.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
