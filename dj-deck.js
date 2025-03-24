@@ -17,9 +17,7 @@ class DJDeck {
         this.isPlaying = false;
         this.animationFrame = null;
         this.pauseTime = 0;
-        
-        // Audio context
-        this.audioContext = AudioContextManager.getContext();
+        this.startTime = 0;
         
         // DOM Elements
         this.fileInput = document.getElementById(`audio${deckNumber}`);
@@ -88,6 +86,39 @@ class DJDeck {
             }
         });
         
+        // Tap Tempo button
+        this.tapTempoBtn.addEventListener('click', () => {
+            const audioCtx = AudioContextManager.getContext();
+            const currentTime = audioCtx ? audioCtx.currentTime : 0;
+            
+            const beatsUpdated = this.beatManager.handleTapTempo(
+                this.audioBuffer,
+                this.isPlaying,
+                this.startTime,
+                currentTime
+            );
+            
+            if (beatsUpdated && this.beatManager.getBPM() > 0) {
+                this.updateBpmDisplay();
+                
+                // If not playing, update waveform with beat markers
+                if (!this.isPlaying && this.audioBuffer) {
+                    this.waveformRenderer.drawStaticWaveform(this.audioBuffer);
+                    
+                    if (this.pauseTime > 0) {
+                        const position = this.pauseTime / this.audioBuffer.duration;
+                        this.waveformRenderer.drawPositionIndicator(position);
+                        this.waveformRenderer.drawZoomedWaveform(
+                            this.audioBuffer,
+                            position,
+                            this.pauseTime,
+                            this.beatManager.getBeatMarkers()
+                        );
+                    }
+                }
+            }
+        });
+        
         // Waveform navigation
         this.waveformCanvas.addEventListener('click', (e) => {
             if (!this.audioBuffer) return;
@@ -105,11 +136,12 @@ class DJDeck {
             }
             
             // Set new start time based on click position
-            this.startTime = AudioContextManager.getContext().currentTime - jumpTime;
+            const audioCtx = AudioContextManager.getContext();
+            this.startTime = audioCtx.currentTime - jumpTime;
             
             // If was playing, restart from new position
             if (this.isPlaying) {
-                this.audioSource = AudioContextManager.getContext().createBufferSource();
+                this.audioSource = audioCtx.createBufferSource();
                 this.audioSource.buffer = this.audioBuffer;
                 this.audioSource.connect(this.analyserNode);
                 this.audioSource.playbackRate.value = this.speedSlider.value / 100;
@@ -120,7 +152,7 @@ class DJDeck {
                 this.waveformRenderer.drawStaticWaveform(this.audioBuffer);
                 this.waveformRenderer.drawPositionIndicator(jumpTime / this.audioBuffer.duration);
                 
-                // Draw zoomed waveform at new position
+                // Draw zoomed waveform at clicked position
                 this.waveformRenderer.drawZoomedWaveform(
                     this.audioBuffer,
                     jumpTime / this.audioBuffer.duration,
@@ -133,20 +165,27 @@ class DJDeck {
                 this.progressBar.style.width = `${Math.min(progress, 100)}%`;
             }
         });
+        
+        // Resize waveform canvas when window resizes
+        window.addEventListener('resize', () => {
+            this.resize();
+        });
     }
     
     /**
-     * Load and decode an audio track
+     * Load and decode audio track
      * @param {File} file - Audio file to load
      */
     async loadTrack(file) {
         try {
-            if (!AudioContextManager.isInitialized()) {
-                this.audioContext = AudioContextManager.getContext();
+            const audioCtx = AudioContextManager.getContext();
+            if (!audioCtx) {
+                AudioContextManager.showError("Audio context not initialized. Please try again.");
+                return;
             }
             
             const arrayBuffer = await file.arrayBuffer();
-            this.audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+            this.audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
             
             // Create audio nodes
             if (this.audioSource) {
@@ -154,12 +193,12 @@ class DJDeck {
             }
             
             // Create analyzer for waveform
-            this.analyserNode = this.audioContext.createAnalyser();
+            this.analyserNode = audioCtx.createAnalyser();
             this.analyserNode.fftSize = 2048;
             
             // Connect nodes for future playback
-            this.gainNode = this.audioContext.createGain();
-            this.gainNode.connect(this.audioContext.destination);
+            this.gainNode = audioCtx.createGain();
+            this.gainNode.connect(audioCtx.destination);
             this.analyserNode.connect(this.gainNode);
             
             // Set initial values
@@ -180,7 +219,7 @@ class DJDeck {
             this.waveformCanvas.style.display = 'block';
             this.noWaveformDiv.style.display = 'none';
             
-            // Draw waveforms
+            // Draw static waveform
             this.waveformRenderer.drawStaticWaveform(this.audioBuffer);
             
         } catch (error) {
@@ -189,22 +228,24 @@ class DJDeck {
     }
     
     /**
-     * Play the loaded track
+     * Start or resume playback
      */
     play() {
         if (this.audioBuffer && !this.isPlaying) {
+            const audioCtx = AudioContextManager.getContext();
+            
             // Create new source (needed after stopping)
-            this.audioSource = this.audioContext.createBufferSource();
+            this.audioSource = audioCtx.createBufferSource();
             this.audioSource.buffer = this.audioBuffer;
             this.audioSource.connect(this.analyserNode);
             this.audioSource.playbackRate.value = this.speedSlider.value / 100;
             
             // If resuming from pause, start from pause position
             if (this.pauseTime) {
-                this.startTime = this.audioContext.currentTime - this.pauseTime;
+                this.startTime = audioCtx.currentTime - this.pauseTime;
                 this.audioSource.start(0, this.pauseTime);
             } else {
-                this.startTime = this.audioContext.currentTime;
+                this.startTime = audioCtx.currentTime;
                 this.audioSource.start(0);
             }
             
@@ -232,7 +273,8 @@ class DJDeck {
             }
             
             // Calculate current position
-            const elapsed = this.audioContext.currentTime - this.startTime;
+            const audioCtx = AudioContextManager.getContext();
+            const elapsed = audioCtx.currentTime - this.startTime;
             this.pauseTime = elapsed;
             
             // Redraw waveforms at pause position
@@ -255,7 +297,6 @@ class DJDeck {
             this.audioSource.stop();
             this.isPlaying = false;
             this.playBtn.textContent = "Play";
-            this.progressBar.style.width = "0%";
             this.pauseTime = 0;
             
             // Stop animation
@@ -268,7 +309,9 @@ class DJDeck {
             this.waveformRenderer.drawStaticWaveform(this.audioBuffer);
             
             // Clear beat markers in zoom view
-            const beatElements = this.zoomContainer.querySelectorAll('.beat-marker, .main-beat-marker');
+            const beatElements = this.zoomContainer.querySelectorAll(
+                '.beat-marker, .main-beat-marker, .center-position-indicator'
+            );
             beatElements.forEach(el => el.remove());
         }
     }
@@ -285,8 +328,10 @@ class DJDeck {
             return;
         }
         
+        const audioCtx = AudioContextManager.getContext();
+        
         // Get current position
-        const elapsed = this.audioContext.currentTime - this.startTime;
+        const elapsed = audioCtx.currentTime - this.startTime;
         const position = elapsed / this.audioBuffer.duration;
         
         // Check if playback is finished
@@ -310,40 +355,6 @@ class DJDeck {
     }
     
     /**
-     * Handle tap tempo and update beat markers
-     */
-    handleTapTempo() {
-        // Delegate to beat manager
-        const beatsUpdated = this.beatManager.handleTapTempo(
-            this.audioBuffer,
-            this.isPlaying,
-            this.startTime,
-            this.audioContext.currentTime
-        );
-        
-        // If beats were updated and we have BPM info, update display
-        if (beatsUpdated && this.beatManager.getBPM() > 0) {
-            this.updateBpmDisplay();
-            
-            // If not playing, update waveform to show beat markers
-            if (!this.isPlaying && this.audioBuffer) {
-                this.waveformRenderer.drawStaticWaveform(this.audioBuffer);
-                
-                if (this.pauseTime > 0) {
-                    const position = this.pauseTime / this.audioBuffer.duration;
-                    this.waveformRenderer.drawPositionIndicator(position);
-                    this.waveformRenderer.drawZoomedWaveform(
-                        this.audioBuffer,
-                        position,
-                        this.pauseTime,
-                        this.beatManager.getBeatMarkers()
-                    );
-                }
-            }
-        }
-    }
-    
-    /**
      * Update the BPM display in the track info
      */
     updateBpmDisplay() {
@@ -364,6 +375,17 @@ class DJDeck {
         this.waveformRenderer.resize();
         if (this.audioBuffer) {
             this.waveformRenderer.drawStaticWaveform(this.audioBuffer);
+            
+            if (this.pauseTime > 0 && !this.isPlaying) {
+                const position = this.pauseTime / this.audioBuffer.duration;
+                this.waveformRenderer.drawPositionIndicator(position);
+                this.waveformRenderer.drawZoomedWaveform(
+                    this.audioBuffer,
+                    position,
+                    this.pauseTime,
+                    this.beatManager.getBeatMarkers()
+                );
+            }
         }
     }
 }
