@@ -151,7 +151,7 @@
 
         .beat-marker {
             position: absolute;
-            width: 2px;
+            width: 1px; /* Thinner orange beat markers */
             background-color: #ff5500;
             height: 100%;
             top: 0;
@@ -160,11 +160,22 @@
         
         .main-beat-marker {
             position: absolute;
-            width: 3px;
+            width: 2px; /* Slightly thicker green markers */
             background-color: #00ff66;
             height: 100%;
             top: 0;
             z-index: 11;
+        }
+        
+        .center-position-indicator {
+            position: absolute;
+            width: 4px; /* Thicker center bar */
+            background-color: #0088ff; /* Blue color for center indicator */
+            height: 100%;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 12; /* Higher z-index to appear above beat markers */
         }
 
         button {
@@ -553,17 +564,28 @@
                 // Generate beats before the first tap (if first tap wasn't at the start)
                 if (firstTapTime > 0) {
                     let time = firstTapTime;
-                    let beatCount = 0;
+                    let beatPosition = 1; // Start with position 1 for the first tap
+                    
+                    // Count backwards to maintain the correct pattern (1, 5, 9, 13...)
                     while (time > 0) {
                         time -= beatInterval;
                         if (time >= 0) {
-                            beatCount++;
+                            beatPosition--;
+                            
+                            // To maintain the pattern going backwards, we calculate the equivalent "forward" position
+                            // This ensures the 1, 5, 9, 13... pattern works in both directions
+                            let normalizedPosition = beatPosition;
+                            while (normalizedPosition <= 0) normalizedPosition += 4;
+                            
+                            // Check if this would be a main beat (1, 5, 9, 13...)
+                            const isMainBeat = (normalizedPosition % 4) === 1;
+                            
                             this.beatMarkers.push({
                                 time: time,
                                 strength: 1.0,
                                 isKick: false,
-                                // First tap is considered beat 0, so we're going backwards
-                                isMainBeat: beatCount % 4 === 0
+                                isMainBeat: isMainBeat,
+                                position: beatPosition // Store the absolute position
                             });
                         }
                     }
@@ -571,21 +593,22 @@
                 
                 // Generate beats forward from the first tap
                 let time = firstTapTime;
-                let beatCount = 0; // Start count from 0 for the first tap
+                let beatPosition = 1; // First tap is position 1 (will be green)
                 
                 while (time < trackDuration) {
-                    // Every 4th beat (starting with the first tap) is a main beat (green)
-                    const isMainBeat = beatCount % 4 === 0;
+                    // Main beats at positions 1, 5, 9, 13... following the pattern 1 + 4x
+                    const isMainBeat = (beatPosition % 4) === 1;
                     
                     this.beatMarkers.push({
                         time: time,
                         strength: 1.0,
                         isKick: false,
-                        isMainBeat: isMainBeat
+                        isMainBeat: isMainBeat,
+                        position: beatPosition // Store the absolute position
                     });
                     
                     time += beatInterval;
-                    beatCount++;
+                    beatPosition++;
                 }
                 
                 // Sort all markers by time
@@ -819,9 +842,9 @@
                 // Clear canvas
                 ctx.clearRect(0, 0, width, height);
                 
-                // Clear any existing beat markers
-                const beatElements = this.zoomContainer.querySelectorAll('.beat-marker, .main-beat-marker');
-                beatElements.forEach(el => el.remove());
+                // Clear any existing beat markers and center indicator
+                const elementsToRemove = this.zoomContainer.querySelectorAll('.beat-marker, .main-beat-marker, .center-position-indicator');
+                elementsToRemove.forEach(el => el.remove());
                 
                 // If no buffer, nothing to draw
                 if (!this.audioBuffer) return;
@@ -897,13 +920,10 @@
                 ctx.closePath();
                 ctx.stroke();
                 
-                // Draw center line indicating current position
-                ctx.beginPath();
-                ctx.moveTo(width / 2, 0);
-                ctx.lineTo(width / 2, height);
-                ctx.strokeStyle = '#ff5500';
-                ctx.lineWidth = 2;
-                ctx.stroke();
+                // Add center position indicator (blue bar) as a DOM element
+                const centerIndicator = document.createElement('div');
+                centerIndicator.className = 'center-position-indicator';
+                this.zoomContainer.appendChild(centerIndicator);
                 
                 // Add beat markers that fall within the visible window
                 const startTime = currentTime - windowDuration/2;
@@ -922,7 +942,7 @@
                         
                         const marker = document.createElement('div');
                         
-                        // Use different class for main beats (every 4th)
+                        // Use different class for main beats (positions 1, 5, 9, 13...)
                         if (beat.isMainBeat) {
                             marker.className = 'main-beat-marker';
                         } else {
@@ -1014,7 +1034,7 @@
                     this.drawStaticWaveform();
                     
                     // Clear beat markers in zoom view
-                    const beatElements = this.zoomContainer.querySelectorAll('.beat-marker, .main-beat-marker');
+                    const beatElements = this.zoomContainer.querySelectorAll('.beat-marker, .main-beat-marker, .center-position-indicator');
                     beatElements.forEach(el => el.remove());
                 }
             }
