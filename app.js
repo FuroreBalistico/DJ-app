@@ -1,5 +1,7 @@
 /**
  * Main application initialization
+ * 
+ * This module initializes the DJ decks and sets up global event handlers.
  */
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize decks
