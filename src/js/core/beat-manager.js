@@ -27,34 +27,52 @@ class BeatManager {
      */
     handleTapTempo(audioBuffer, isPlaying, startTime, currentTime) {
         const now = performance.now();
-        
+
         // Reset if it's been too long since last tap (more than 3 seconds)
         if (now - this.lastTapTime > 3000) {
             this.tapTimes = [];
-            this.tapTempoBtn.textContent = "Tap Tempo (1)";
+            this.bpm = 0;
+            this.updateButtonText();
             this.tapTempoActive = true;
         }
-        
+
         this.tapTimes.push(now);
         this.lastTapTime = now;
-        
-        // Update button to show tap count
-        if (this.tapTempoActive) {
-            this.tapTempoBtn.textContent = `Tap Tempo (${this.tapTimes.length})`;
-        }
-        
+
         // Calculate BPM once we have at least 4 taps
         if (this.tapTimes.length >= 4) {
             this.calculateTapTempo();
         }
-        
+
+        // Update button text
+        this.updateButtonText();
+
         // Generate beat markers based on the tapped tempo if we have a track loaded
         if (audioBuffer && this.tapTimes.length >= 2) {
             this.generateBeatsFromManualTaps(audioBuffer, isPlaying, startTime, currentTime);
             return true;
         }
-        
+
         return false;
+    }
+
+    /**
+     * Update the tap tempo button text with current state
+     */
+    updateButtonText() {
+        const icon = '🎵';
+        const text = 'Tap';
+
+        if (this.bpm > 0) {
+            // Show BPM when calculated
+            this.tapTempoBtn.innerHTML = `<span class="btn-icon">${icon}</span><span class="btn-text">${this.bpm} BPM</span>`;
+        } else if (this.tapTimes.length > 0) {
+            // Show tap count while tapping
+            this.tapTempoBtn.innerHTML = `<span class="btn-icon">${icon}</span><span class="btn-text">${text} (${this.tapTimes.length})</span>`;
+        } else {
+            // Default state
+            this.tapTempoBtn.innerHTML = `<span class="btn-icon">${icon}</span><span class="btn-text">${text} Tempo</span>`;
+        }
     }
     
     /**

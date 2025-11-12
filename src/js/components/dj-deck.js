@@ -46,9 +46,9 @@ class DJDeck {
         // Initialize beat manager
         this.beatManager = new BeatManager(this.tapTempoBtn);
 
-        // Initialize jog wheel
-        this.jogWheel = new JogWheel(
-            `jog-wheel${deckNumber}`,
+        // Initialize pitch slider
+        this.pitchSlider = new PitchSlider(
+            `pitch-slider${deckNumber}`,
             (pitchBend) => this.handlePitchBend(pitchBend)
         );
 
