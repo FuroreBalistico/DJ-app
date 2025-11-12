@@ -1,3 +1,24 @@
+/* ===================================
+   DJ-App Modern UI Styles
+   ===================================*/
+
+/* === CSS Variables === */
+:root {
+    --primary-color: #ff6b6b;
+    --secondary-color: #4ecdc4;
+    --accent-color: #ffe66d;
+    --bg-dark: #0f0f0f;
+    --bg-medium: #1a1a1a;
+    --bg-light: #2a2a2a;
+    --text-light: #ffffff;
+    --text-muted: #a0a0a0;
+    --success: #51cf66;
+    --error: #ff6b6b;
+    --border-radius: 16px;
+    --transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+/* === Reset & Base === */
 * {
     margin: 0;
     padding: 0;
@@ -5,67 +26,420 @@
 }
 
 body {
-    font-family: Arial, sans-serif;
-    background: #1a1a1a;
-    color: white;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 100%);
+    color: var(--text-light);
     min-height: 100vh;
-    padding: 2rem;
+    padding: 1rem;
+    overflow-x: hidden;
 }
 
-.console, .about-section {
-    max-width: 1200px;
+/* === Main Container === */
+.console {
+    max-width: 1400px;
     margin: 0 auto 2rem;
-    background: #2a2a2a;
+    background: linear-gradient(135deg, rgba(42, 42, 42, 0.7) 0%, rgba(30, 30, 30, 0.7) 100%);
+    backdrop-filter: blur(10px);
     padding: 2rem;
-    border-radius: 10px;
-    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    border-radius: var(--border-radius);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.about-section h2 {
-    color: #007bff;
-    margin-bottom: 1rem;
+/* === Title === */
+.title {
+    text-align: center;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
 }
 
-.about-section p {
-    margin-bottom: 1rem;
+.title:first-of-type {
+    font-size: 2.5rem;
 }
 
+.title:nth-of-type(2) {
+    font-size: 1.2rem;
+    opacity: 0.8;
+}
+
+/* === Error Message === */
+.error {
+    background: rgba(255, 107, 107, 0.2);
+    color: var(--error);
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    text-align: center;
+    border: 1px solid var(--error);
+    font-weight: 500;
+}
+
+/* === Deck Container === */
 .deck-container {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
     gap: 2rem;
-    justify-content: center;
+    margin-top: 2rem;
+}
+
+/* === Individual Deck === */
+.deck {
+    background: linear-gradient(135deg, rgba(50, 50, 50, 0.6) 0%, rgba(35, 35, 35, 0.6) 100%);
+    backdrop-filter: blur(10px);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: var(--transition);
+}
+
+.deck:hover {
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+/* === Deck Header === */
+.deck-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.deck-header h2 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.track-info {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* === Deck Main Layout === */
+.deck-main {
+    display: flex;
+    gap: 1.5rem;
     flex-wrap: wrap;
 }
 
-.deck {
-    flex: 1;
-    min-width: 300px;
-    background: #333;
-    padding: 1.5rem;
-    border-radius: 8px;
+.deck-left {
+    flex: 0 0 200px;
     display: flex;
     flex-direction: column;
     gap: 1rem;
 }
 
-.track-info {
-    text-align: center;
-    min-height: 3em;
+.deck-right {
+    flex: 1;
+    min-width: 250px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 0.3rem;
+    gap: 1rem;
 }
 
-.bpm-badge {
-    display: inline-block;
-    background-color: #ff5500;
-    color: white;
-    font-weight: bold;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 0.8rem;
+/* ===================================
+   JOG WHEEL STYLES
+   ===================================*/
+
+.jog-wheel-container {
+    width: 200px;
+    height: 200px;
+    margin: 0 auto;
+    position: relative;
 }
+
+.jog-wheel-outer {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.jog-wheel-inner {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+    box-shadow:
+        0 8px 20px rgba(0, 0, 0, 0.6),
+        inset 0 2px 10px rgba(255, 255, 255, 0.1),
+        inset 0 -2px 10px rgba(0, 0, 0, 0.5);
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+    position: relative;
+    transition: var(--transition);
+    border: 3px solid rgba(255, 255, 255, 0.1);
+}
+
+.jog-wheel-inner:hover {
+    box-shadow:
+        0 12px 30px rgba(0, 0, 0, 0.7),
+        inset 0 2px 10px rgba(255, 255, 255, 0.15),
+        inset 0 -2px 10px rgba(0, 0, 0, 0.5);
+    border-color: var(--primary-color);
+}
+
+.jog-wheel-inner.active {
+    cursor: grabbing;
+    box-shadow:
+        0 4px 15px rgba(255, 107, 107, 0.4),
+        inset 0 2px 10px rgba(255, 107, 107, 0.2),
+        inset 0 -2px 10px rgba(0, 0, 0, 0.5);
+    border-color: var(--primary-color);
+}
+
+.jog-wheel-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #3a3a3a 0%, #2a2a2a 100%);
+    box-shadow:
+        0 4px 10px rgba(0, 0, 0, 0.5),
+        inset 0 1px 3px rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.jog-wheel-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    box-shadow: 0 0 10px var(--primary-color);
+}
+
+.jog-wheel-markers {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+}
+
+.jog-wheel-marker {
+    position: absolute;
+    width: 2px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.2);
+    top: 50%;
+    left: 50%;
+    transform-origin: center center;
+}
+
+.jog-wheel-marker.large {
+    height: 12px;
+    width: 3px;
+    background: rgba(255, 255, 255, 0.4);
+}
+
+.jog-wheel-label {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+/* ===================================
+   CONTROLS
+   ===================================*/
+
+/* === Playback Controls === */
+.playback-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.play-btn,
+.tap-tempo-btn {
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.play-btn {
+    background: linear-gradient(135deg, var(--success) 0%, #40c057 100%);
+    color: white;
+}
+
+.play-btn:disabled {
+    background: linear-gradient(135deg, #555 0%, #444 100%);
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.play-btn:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(81, 207, 102, 0.4);
+}
+
+.play-btn:not(:disabled):active {
+    transform: translateY(0);
+}
+
+.tap-tempo-btn {
+    background: linear-gradient(135deg, var(--secondary-color) 0%, #3db9b0 100%);
+    color: white;
+}
+
+.tap-tempo-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(78, 205, 196, 0.4);
+}
+
+.tap-tempo-btn:active {
+    transform: translateY(0);
+}
+
+.btn-icon {
+    font-size: 1.2rem;
+}
+
+.btn-text {
+    font-size: 0.85rem;
+}
+
+/* === File Input === */
+.file-input-label {
+    padding: 0.75rem 1rem;
+    background: linear-gradient(135deg, var(--primary-color) 0%, #fa5252 100%);
+    color: white;
+    border-radius: 12px;
+    cursor: pointer;
+    text-align: center;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.file-input-label:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(255, 107, 107, 0.4);
+}
+
+.file-input {
+    display: none;
+}
+
+.file-icon {
+    font-size: 1.2rem;
+}
+
+.file-text {
+    font-size: 0.85rem;
+}
+
+/* ===================================
+   WAVEFORMS
+   ===================================*/
+
+.waveform-container {
+    position: relative;
+    height: 120px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.no-waveform {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    pointer-events: none;
+}
+
+.waveform-canvas {
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.waveform-canvas:hover {
+    filter: brightness(1.2);
+}
+
+.dual-view-container {
+    position: relative;
+}
+
+.zoom-waveform {
+    height: 80px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* === Progress Bar === */
+.progress-bar {
+    height: 6px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color) 0%, var(--accent-color) 100%);
+    width: 0%;
+    transition: width 0.1s linear;
+    box-shadow: 0 0 10px var(--primary-color);
+}
+
+/* ===================================
+   SLIDERS
+   ===================================*/
 
 .controls {
     display: flex;
@@ -73,161 +447,256 @@ body {
     gap: 1rem;
 }
 
-.button-row {
+.slider-group {
     display: flex;
+    flex-direction: column;
     gap: 0.5rem;
 }
 
-.tap-tempo {
-    padding: 0.5rem;
-    background: #ff5500;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-}
-
-.tap-tempo:hover {
-    background: #ff7730;
-}
-
-.slider-container {
+.slider-label {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-light);
 }
 
-.slider-container label {
-    min-width: 80px;
+.slider-label span:first-child {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
-input[type="file"] {
-    display: block;
+.slider-icon {
+    font-size: 1.1rem;
+}
+
+.slider-value {
+    font-weight: 700;
+    color: var(--accent-color);
+    min-width: 50px;
+    text-align: right;
+}
+
+.slider {
+    -webkit-appearance: none;
+    appearance: none;
     width: 100%;
-    padding: 0.5rem;
-    background: #444;
+    height: 8px;
     border-radius: 4px;
-    border: none;
-    color: white;
+    background: rgba(0, 0, 0, 0.4);
+    outline: none;
+    transition: var(--transition);
 }
 
-input[type="range"] {
-    flex: 1;
-}
-
-.progress-bar {
-    width: 100%;
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
     height: 20px;
-    background: #444;
-    border-radius: 10px;
-    overflow: hidden;
-    margin-bottom: 1rem;
-    display: none;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3),
+                0 0 0 4px rgba(255, 107, 107, 0.2);
+    transition: var(--transition);
 }
 
-.dual-view-container {
-    width: 100%;
-    height: 40px;
-    margin-bottom: 1rem;
-    position: relative;
-}
-
-.zoom-waveform {
-    width: 100%;
-    height: 100%;
-    background: #333;
-    border-radius: 4px;
-    position: relative;
-    overflow: hidden;
-}
-
-.beat-marker {
-    position: absolute;
-    width: 1px; /* Thinner orange beat markers */
-    background-color: #ff5500;
-    height: 100%;
-    top: 0;
-    z-index: 10;
-}
-
-.main-beat-marker {
-    position: absolute;
-    width: 2px; /* Slightly thicker green markers */
-    background-color: #00ff66;
-    height: 100%;
-    top: 0;
-    z-index: 11;
-}
-
-.center-position-indicator {
-    position: absolute;
-    width: 4px; /* Thicker center bar */
-    background-color: #0088ff; /* Blue color for center indicator */
-    height: 100%;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 12; /* Higher z-index to appear above beat markers */
-}
-
-button {
-    padding: 0.5rem 1rem;
-    background: #007bff;
+.slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    cursor: pointer;
     border: none;
-    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3),
+                0 0 0 4px rgba(255, 107, 107, 0.2);
+    transition: var(--transition);
+}
+
+.slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4),
+                0 0 0 6px rgba(255, 107, 107, 0.3);
+}
+
+.slider::-moz-range-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4),
+                0 0 0 6px rgba(255, 107, 107, 0.3);
+}
+
+/* ===================================
+   BPM BADGE
+   ===================================*/
+
+.bpm-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%);
     color: white;
-    cursor: pointer;
-    transition: background 0.3s;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-left: 0.5rem;
+    box-shadow: 0 2px 8px rgba(78, 205, 196, 0.3);
 }
 
-button:hover {
-    background: #0056b3;
+/* ===================================
+   ABOUT SECTION
+   ===================================*/
+
+.about-section {
+    max-width: 1400px;
+    margin: 2rem auto;
+    background: linear-gradient(135deg, rgba(42, 42, 42, 0.7) 0%, rgba(30, 30, 30, 0.7) 100%);
+    backdrop-filter: blur(10px);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-button:disabled {
-    background: #666;
-    cursor: not-allowed;
-}
-
-.title {
-    text-align: center;
-    margin-bottom: 2rem;
-    color: #007bff;
-}
-
-.error {
-    color: #ff4444;
-    text-align: center;
-    margin: 1rem 0;
-}
-
-.waveform-container {
-    width: 100%;
-    height: 80px;
-    background: #222;
-    border-radius: 4px;
+.about-section h2 {
+    background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
     margin-bottom: 1rem;
-    position: relative;
-    overflow: hidden;
-    cursor: pointer;
+    font-size: 1.5rem;
 }
 
-.waveform-container:hover {
-    background: #2a2a2a;
+.about-section p {
+    line-height: 1.6;
+    color: var(--text-muted);
 }
 
-.waveform-canvas {
-    width: 100%;
-    height: 100%;
-    display: block;
+/* ===================================
+   RESPONSIVE DESIGN
+   ===================================*/
+
+@media (max-width: 1200px) {
+    .deck-container {
+        grid-template-columns: 1fr;
+    }
 }
 
-.no-waveform {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: #666;
-    font-size: 0.9rem;
+@media (max-width: 768px) {
+    body {
+        padding: 0.5rem;
+    }
+
+    .console,
+    .about-section {
+        padding: 1rem;
+    }
+
+    .title:first-of-type {
+        font-size: 1.8rem;
+    }
+
+    .title:nth-of-type(2) {
+        font-size: 1rem;
+    }
+
+    .deck {
+        padding: 1rem;
+    }
+
+    .deck-main {
+        flex-direction: column;
+    }
+
+    .deck-left {
+        flex: 1;
+        width: 100%;
+    }
+
+    .jog-wheel-container {
+        width: 160px;
+        height: 160px;
+    }
+
+    .jog-wheel-inner {
+        width: 150px;
+        height: 150px;
+    }
+
+    .deck-right {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .deck-container {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .title:first-of-type {
+        font-size: 1.5rem;
+    }
+
+    .title:nth-of-type(2) {
+        font-size: 0.9rem;
+    }
+
+    .jog-wheel-container {
+        width: 140px;
+        height: 140px;
+    }
+
+    .jog-wheel-inner {
+        width: 130px;
+        height: 130px;
+    }
+
+    .waveform-container {
+        height: 80px;
+    }
+
+    .zoom-waveform {
+        height: 60px;
+    }
+}
+
+/* ===================================
+   ANIMATIONS
+   ===================================*/
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
+
+@keyframes glow {
+    0%, 100% {
+        box-shadow: 0 0 10px var(--primary-color);
+    }
+    50% {
+        box-shadow: 0 0 20px var(--primary-color);
+    }
+}
+
+/* Smooth fade-in on page load */
+.console,
+.deck,
+.about-section {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
