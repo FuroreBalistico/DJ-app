@@ -650,12 +650,16 @@
             
             updateBpmDisplay() {
                 if (!this.bpm) return;
-                
+
                 // Get current track name without BPM badge (if any)
                 let trackName = this.trackInfo.textContent.replace(/\s*\d+\s*BPM$/, '');
-                
-                // Update track info with BPM
-                this.trackInfo.innerHTML = `${trackName} <span class="bpm-badge">${this.bpm} BPM</span>`;
+
+                // Update track info with BPM (using safe DOM manipulation to prevent XSS)
+                this.trackInfo.textContent = trackName + ' ';
+                const badge = document.createElement('span');
+                badge.className = 'bpm-badge';
+                badge.textContent = `${this.bpm} BPM`;
+                this.trackInfo.appendChild(badge);
             }
             
             resizeCanvas() {
@@ -677,24 +681,67 @@
 
             async loadTrack(file) {
                 try {
+                    // Validate file size (max 100MB)
+                    const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB in bytes
+                    if (file.size > MAX_FILE_SIZE) {
+                        showError('File too large. Maximum size is 100MB.');
+                        return;
+                    }
+
+                    // Validate MIME type
+                    const validMimeTypes = [
+                        'audio/mpeg',      // MP3
+                        'audio/mp3',       // MP3 (alternative)
+                        'audio/wav',       // WAV
+                        'audio/wave',      // WAV (alternative)
+                        'audio/x-wav',     // WAV (alternative)
+                        'audio/ogg',       // OGG
+                        'audio/mp4',       // MP4/M4A
+                        'audio/x-m4a',     // M4A
+                        'audio/aac',       // AAC
+                        'audio/flac',      // FLAC
+                        'audio/x-flac',    // FLAC (alternative)
+                        'audio/webm'       // WebM
+                    ];
+
+                    if (!validMimeTypes.includes(file.type)) {
+                        showError('Invalid file type. Please upload an audio file (MP3, WAV, OGG, M4A, FLAC, etc.).');
+                        return;
+                    }
+
                     if (!audioContext) {
                         initializeAudioContext();
                     }
 
-                    const arrayBuffer = await file.arrayBuffer();
-                    this.audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                    // Decode audio file
+                    let arrayBuffer;
+                    try {
+                        arrayBuffer = await file.arrayBuffer();
+                    } catch (error) {
+                        console.error('Error reading file:', error);
+                        showError('Failed to read file. The file may be corrupted.');
+                        return;
+                    }
+
+                    try {
+                        this.audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                    } catch (error) {
+                        console.error('Error decoding audio:', error);
+                        showError('Failed to decode audio file. The file may be corrupted or in an unsupported format.');
+                        return;
+                    }
 
                     // Create audio nodes
                     if (this.audioSource) {
                         this.audioSource.disconnect();
                     }
-                    
+
                     // Create analyzer for waveform
                     this.analyserNode = audioContext.createAnalyser();
                     this.analyserNode.fftSize = 2048;
                     this.bufferLength = this.analyserNode.frequencyBinCount;
                     this.dataArray = new Uint8Array(this.bufferLength);
-                    
+
                     // Connect nodes for future playback
                     this.gainNode = audioContext.createGain();
                     this.gainNode.connect(audioContext.destination);
@@ -709,20 +756,21 @@
                     this.playBtn.textContent = "Play";
                     this.isPlaying = false;
                     this.pauseTime = 0;
-                    
+
                     // Prepare waveform
                     this.resizeCanvas();
                     this.waveformCanvas.style.display = 'block';
                     this.noWaveformDiv.style.display = 'none';
-                    
+
                     // Reset beat markers
                     this.beatMarkers = [];
-                    
+
                     // Draw waveforms
                     this.drawStaticWaveform();
 
                 } catch (error) {
-                    showError(`Error loading track: ${error.message}`);
+                    console.error('Unexpected error loading track:', error);
+                    showError('An unexpected error occurred while loading the track.');
                 }
             }
             

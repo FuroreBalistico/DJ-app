@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Archives
+archive/
+
+# Build outputs
+dist/
+build/
+
+# Logs
+*.log
+
+# Cache
+.cache/
