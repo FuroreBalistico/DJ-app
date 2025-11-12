@@ -18,33 +18,43 @@ class DJDeck {
         this.animationFrame = null;
         this.pauseTime = 0;
         this.startTime = 0;
-        
+        this.basePlaybackRate = 1.0; // Base playback rate from speed slider
+        this.pitchBendMultiplier = 1.0; // Temporary pitch bend from jog wheel
+
         // DOM Elements
         this.fileInput = document.getElementById(`audio${deckNumber}`);
         this.playBtn = document.getElementById(`playBtn${deckNumber}`);
         this.tapTempoBtn = document.getElementById(`tapTempo${deckNumber}`);
         this.volumeSlider = document.getElementById(`volume${deckNumber}`);
         this.speedSlider = document.getElementById(`speed${deckNumber}`);
+        this.volumeValue = document.getElementById(`volume-value${deckNumber}`);
+        this.speedValue = document.getElementById(`speed-value${deckNumber}`);
         this.trackInfo = document.getElementById(`track-info${deckNumber}`);
         this.progressBar = document.getElementById(`progress${deckNumber}`);
         this.waveformCanvas = document.getElementById(`waveform${deckNumber}`);
         this.zoomWaveformCanvas = document.getElementById(`zoom-waveform${deckNumber}`);
         this.zoomContainer = document.getElementById(`zoom-container${deckNumber}`);
         this.noWaveformDiv = document.getElementById(`no-waveform${deckNumber}`);
-        
+
         // Initialize waveform renderer
         this.waveformRenderer = new WaveformRenderer(
             this.waveformCanvas,
             this.zoomWaveformCanvas,
             this.zoomContainer
         );
-        
+
         // Initialize beat manager
         this.beatManager = new BeatManager(this.tapTempoBtn);
-        
+
+        // Initialize jog wheel
+        this.jogWheel = new JogWheel(
+            `jog-wheel${deckNumber}`,
+            (pitchBend) => this.handlePitchBend(pitchBend)
+        );
+
         // Hide waveform canvas initially
         this.waveformCanvas.style.display = 'none';
-        
+
         // Set up event listeners
         this.setupEventListeners();
     }
@@ -74,15 +84,22 @@ class DJDeck {
         
         // Volume slider
         this.volumeSlider.addEventListener('input', (e) => {
+            const value = e.target.value;
             if (this.gainNode) {
-                this.gainNode.gain.value = e.target.value / 100;
+                this.gainNode.gain.value = value / 100;
+            }
+            if (this.volumeValue) {
+                this.volumeValue.textContent = `${value}%`;
             }
         });
-        
+
         // Speed slider
         this.speedSlider.addEventListener('input', (e) => {
-            if (this.audioSource) {
-                this.audioSource.playbackRate.value = e.target.value / 100;
+            const value = e.target.value;
+            this.basePlaybackRate = value / 100;
+            this.updatePlaybackRate();
+            if (this.speedValue) {
+                this.speedValue.textContent = `${value}%`;
             }
         });
         
@@ -144,7 +161,8 @@ class DJDeck {
                 this.audioSource = audioCtx.createBufferSource();
                 this.audioSource.buffer = this.audioBuffer;
                 this.audioSource.connect(this.analyserNode);
-                this.audioSource.playbackRate.value = this.speedSlider.value / 100;
+                this.basePlaybackRate = this.speedSlider.value / 100;
+                this.updatePlaybackRate();
                 this.audioSource.start(0, jumpTime);
             } else {
                 // Update position without playing
@@ -282,8 +300,9 @@ class DJDeck {
             this.audioSource = audioCtx.createBufferSource();
             this.audioSource.buffer = this.audioBuffer;
             this.audioSource.connect(this.analyserNode);
-            this.audioSource.playbackRate.value = this.speedSlider.value / 100;
-            
+            this.basePlaybackRate = this.speedSlider.value / 100;
+            this.updatePlaybackRate();
+
             // If resuming from pause, start from pause position
             if (this.pauseTime) {
                 this.startTime = audioCtx.currentTime - this.pauseTime;
@@ -417,13 +436,32 @@ class DJDeck {
     }
     
     /**
+     * Handle pitch bend from jog wheel
+     * @param {number} pitchBend - Pitch bend multiplier (1.0 = normal speed)
+     */
+    handlePitchBend(pitchBend) {
+        this.pitchBendMultiplier = pitchBend;
+        this.updatePlaybackRate();
+    }
+
+    /**
+     * Update playback rate combining base rate and pitch bend
+     */
+    updatePlaybackRate() {
+        if (this.audioSource && this.audioSource.playbackRate) {
+            const finalRate = this.basePlaybackRate * this.pitchBendMultiplier;
+            this.audioSource.playbackRate.value = finalRate;
+        }
+    }
+
+    /**
      * Resize waveform canvases
      */
     resize() {
         this.waveformRenderer.resize();
         if (this.audioBuffer) {
             this.waveformRenderer.drawStaticWaveform(this.audioBuffer);
-            
+
             if (this.pauseTime > 0 && !this.isPlaying) {
                 const position = this.pauseTime / this.audioBuffer.duration;
                 this.waveformRenderer.drawPositionIndicator(position);
