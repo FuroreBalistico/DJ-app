@@ -178,52 +178,96 @@ class DJDeck {
      */
     async loadTrack(file) {
         try {
+            // Validate file size (max 100MB)
+            const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB in bytes
+            if (file.size > MAX_FILE_SIZE) {
+                AudioContextManager.showError('File too large. Maximum size is 100MB.');
+                return;
+            }
+
+            // Validate MIME type
+            const validMimeTypes = [
+                'audio/mpeg',      // MP3
+                'audio/mp3',       // MP3 (alternative)
+                'audio/wav',       // WAV
+                'audio/wave',      // WAV (alternative)
+                'audio/x-wav',     // WAV (alternative)
+                'audio/ogg',       // OGG
+                'audio/mp4',       // MP4/M4A
+                'audio/x-m4a',     // M4A
+                'audio/aac',       // AAC
+                'audio/flac',      // FLAC
+                'audio/x-flac',    // FLAC (alternative)
+                'audio/webm'       // WebM
+            ];
+
+            if (!validMimeTypes.includes(file.type)) {
+                AudioContextManager.showError('Invalid file type. Please upload an audio file (MP3, WAV, OGG, M4A, FLAC, etc.).');
+                return;
+            }
+
             const audioCtx = AudioContextManager.getContext();
             if (!audioCtx) {
                 AudioContextManager.showError("Audio context not initialized. Please try again.");
                 return;
             }
-            
-            const arrayBuffer = await file.arrayBuffer();
-            this.audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-            
+
+            // Decode audio file
+            let arrayBuffer;
+            try {
+                arrayBuffer = await file.arrayBuffer();
+            } catch (error) {
+                console.error('Error reading file:', error);
+                AudioContextManager.showError('Failed to read file. The file may be corrupted.');
+                return;
+            }
+
+            try {
+                this.audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+            } catch (error) {
+                console.error('Error decoding audio:', error);
+                AudioContextManager.showError('Failed to decode audio file. The file may be corrupted or in an unsupported format.');
+                return;
+            }
+
             // Create audio nodes
             if (this.audioSource) {
                 this.audioSource.disconnect();
             }
-            
+
             // Create analyzer for waveform
             this.analyserNode = audioCtx.createAnalyser();
             this.analyserNode.fftSize = 2048;
-            
+
             // Connect nodes for future playback
             this.gainNode = audioCtx.createGain();
             this.gainNode.connect(audioCtx.destination);
             this.analyserNode.connect(this.gainNode);
-            
+
             // Set initial values
             this.gainNode.gain.value = this.volumeSlider.value / 100;
-            
+
             // Update UI
             this.trackInfo.textContent = file.name;
             this.playBtn.disabled = false;
             this.playBtn.textContent = "Play";
             this.isPlaying = false;
             this.pauseTime = 0;
-            
+
             // Reset beat manager
             this.beatManager.resetBeatMarkers();
-            
+
             // Prepare waveform
             this.waveformRenderer.resize();
             this.waveformCanvas.style.display = 'block';
             this.noWaveformDiv.style.display = 'none';
-            
+
             // Draw static waveform
             this.waveformRenderer.drawStaticWaveform(this.audioBuffer);
-            
+
         } catch (error) {
-            AudioContextManager.showError(`Error loading track: ${error.message}`);
+            console.error('Unexpected error loading track:', error);
+            AudioContextManager.showError('An unexpected error occurred while loading the track.');
         }
     }
     
@@ -360,12 +404,16 @@ class DJDeck {
     updateBpmDisplay() {
         const bpm = this.beatManager.getBPM();
         if (!bpm) return;
-        
+
         // Get current track name without BPM badge (if any)
         let trackName = this.trackInfo.textContent.replace(/\s*\d+\s*BPM$/, '');
-        
-        // Update track info with BPM
-        this.trackInfo.innerHTML = `${trackName} <span class="bpm-badge">${bpm} BPM</span>`;
+
+        // Update track info with BPM (using safe DOM manipulation to prevent XSS)
+        this.trackInfo.textContent = trackName + ' ';
+        const badge = document.createElement('span');
+        badge.className = 'bpm-badge';
+        badge.textContent = `${bpm} BPM`;
+        this.trackInfo.appendChild(badge);
     }
     
     /**
