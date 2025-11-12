@@ -35,6 +35,8 @@ class DJDeck {
         this.zoomWaveformCanvas = document.getElementById(`zoom-waveform${deckNumber}`);
         this.zoomContainer = document.getElementById(`zoom-container${deckNumber}`);
         this.noWaveformDiv = document.getElementById(`no-waveform${deckNumber}`);
+        this.vuMeterCanvas = document.getElementById(`vu-meter${deckNumber}`);
+        this.bpmScale = document.getElementById(`bpm-scale${deckNumber}`);
 
         // Initialize waveform renderer
         this.waveformRenderer = new WaveformRenderer(
@@ -46,14 +48,20 @@ class DJDeck {
         // Initialize beat manager
         this.beatManager = new BeatManager(this.tapTempoBtn);
 
-        // Initialize jog wheel
-        this.jogWheel = new JogWheel(
-            `jog-wheel${deckNumber}`,
+        // Initialize pitch slider
+        this.pitchSlider = new PitchSlider(
+            `pitch-slider${deckNumber}`,
             (pitchBend) => this.handlePitchBend(pitchBend)
         );
 
         // Hide waveform canvas initially
         this.waveformCanvas.style.display = 'none';
+
+        // Setup VU meter
+        this.setupVUMeter();
+
+        // Setup BPM scale
+        this.setupBPMScale();
 
         // Set up event listeners
         this.setupEventListeners();
@@ -117,11 +125,12 @@ class DJDeck {
             
             if (beatsUpdated && this.beatManager.getBPM() > 0) {
                 this.updateBpmDisplay();
-                
+                this.updateBPMScale(); // Update BPM scale with detected BPM
+
                 // If not playing, update waveform with beat markers
                 if (!this.isPlaying && this.audioBuffer) {
                     this.waveformRenderer.drawStaticWaveform(this.audioBuffer);
-                    
+
                     if (this.pauseTime > 0) {
                         const position = this.pauseTime / this.audioBuffer.duration;
                         this.waveformRenderer.drawPositionIndicator(position);
@@ -412,7 +421,10 @@ class DJDeck {
             elapsed,
             this.beatManager.getBeatMarkers()
         );
-        
+
+        // Update VU meter
+        this.updateVUMeter();
+
         // Continue animation loop
         this.animationFrame = requestAnimationFrame(() => this.updatePlaybackPosition());
     }
@@ -472,6 +484,116 @@ class DJDeck {
                     this.beatManager.getBeatMarkers()
                 );
             }
+        }
+    }
+
+    /**
+     * Setup VU meter canvas
+     */
+    setupVUMeter() {
+        if (!this.vuMeterCanvas) return;
+
+        // Set canvas size
+        const rect = this.vuMeterCanvas.parentElement.getBoundingClientRect();
+        this.vuMeterCanvas.width = rect.width;
+        this.vuMeterCanvas.height = 8;
+
+        this.vuMeterCtx = this.vuMeterCanvas.getContext('2d');
+    }
+
+    /**
+     * Update VU meter visualization
+     */
+    updateVUMeter() {
+        if (!this.vuMeterCtx || !this.analyserNode) return;
+
+        const canvas = this.vuMeterCanvas;
+        const ctx = this.vuMeterCtx;
+
+        // Get frequency data
+        const bufferLength = this.analyserNode.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        this.analyserNode.getByteFrequencyData(dataArray);
+
+        // Calculate average level
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+            sum += dataArray[i];
+        }
+        const average = sum / bufferLength;
+        const level = average / 255; // Normalize to 0-1
+
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw VU meter bars
+        const barWidth = canvas.width * level;
+
+        // Gradient based on level
+        const gradient = ctx.createLinearGradient(0, 0, barWidth, 0);
+        if (level < 0.5) {
+            gradient.addColorStop(0, '#51cf66'); // Green
+            gradient.addColorStop(1, '#51cf66');
+        } else if (level < 0.8) {
+            gradient.addColorStop(0, '#51cf66'); // Green
+            gradient.addColorStop(0.6, '#ffe66d'); // Yellow
+            gradient.addColorStop(1, '#ffe66d');
+        } else {
+            gradient.addColorStop(0, '#51cf66'); // Green
+            gradient.addColorStop(0.4, '#ffe66d'); // Yellow
+            gradient.addColorStop(0.7, '#ff6b6b'); // Red
+            gradient.addColorStop(1, '#ff6b6b');
+        }
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, barWidth, canvas.height);
+    }
+
+    /**
+     * Setup BPM scale
+     */
+    setupBPMScale() {
+        if (!this.bpmScale) return;
+
+        // Update BPM scale when speed slider changes
+        this.speedSlider.addEventListener('input', () => {
+            this.updateBPMScale();
+        });
+
+        // Initial update
+        this.updateBPMScale();
+    }
+
+    /**
+     * Update BPM scale markers
+     */
+    updateBPMScale() {
+        if (!this.bpmScale) return;
+
+        const baseBPM = this.beatManager.getBPM() || 120; // Use detected BPM or default to 120
+        const minSpeed = parseInt(this.speedSlider.min);
+        const maxSpeed = parseInt(this.speedSlider.max);
+        const currentSpeed = parseInt(this.speedSlider.value);
+
+        // Clear existing markers
+        this.bpmScale.innerHTML = '';
+
+        // Create 5 markers evenly distributed
+        const numMarkers = 5;
+        for (let i = 0; i < numMarkers; i++) {
+            const speedPercent = minSpeed + (maxSpeed - minSpeed) * (i / (numMarkers - 1));
+            const bpm = Math.round(baseBPM * (speedPercent / 100));
+
+            const marker = document.createElement('span');
+            marker.className = 'bpm-scale-marker';
+            marker.textContent = bpm;
+
+            // Highlight current marker
+            if (Math.abs(speedPercent - currentSpeed) < 5) {
+                marker.classList.add('active');
+            }
+
+            this.bpmScale.appendChild(marker);
         }
     }
 }

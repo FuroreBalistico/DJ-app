@@ -21,9 +21,6 @@
 
                 <div class="deck-main">
                     <div class="deck-left">
-                        <!-- Jog Wheel -->
-                        <div id="jog-wheel1" class="jog-wheel-container"></div>
-
                         <!-- Playback Controls -->
                         <div class="playback-controls">
                             <button id="playBtn1" disabled class="play-btn">
@@ -61,21 +58,35 @@
 
                         <!-- Sliders -->
                         <div class="controls">
-                            <div class="slider-group">
-                                <label class="slider-label">
-                                    <span class="slider-icon">🔊</span>
-                                    <span>Volume</span>
-                                    <span class="slider-value" id="volume-value1">100%</span>
-                                </label>
-                                <input type="range" id="volume1" min="0" max="100" value="100" class="slider">
-                            </div>
-                            <div class="slider-group">
-                                <label class="slider-label">
-                                    <span class="slider-icon">⚡</span>
-                                    <span>Speed</span>
-                                    <span class="slider-value" id="speed-value1">100%</span>
-                                </label>
-                                <input type="range" id="speed1" min="70" max="130" value="100" class="slider">
+                            <div class="controls-row">
+                                <!-- Pitch Slider (Vertical) -->
+                                <div id="pitch-slider1" class="pitch-slider-container"></div>
+
+                                <!-- Horizontal Sliders -->
+                                <div class="horizontal-sliders">
+                                    <div class="slider-group">
+                                        <label class="slider-label">
+                                            <span class="slider-icon">🔊</span>
+                                            <span>Volume</span>
+                                            <span class="slider-value" id="volume-value1">100%</span>
+                                        </label>
+                                        <div class="slider-wrapper">
+                                            <canvas id="vu-meter1" class="vu-meter-canvas"></canvas>
+                                            <input type="range" id="volume1" min="0" max="100" value="100" class="slider">
+                                        </div>
+                                    </div>
+                                    <div class="slider-group">
+                                        <label class="slider-label">
+                                            <span class="slider-icon">⚡</span>
+                                            <span>Speed</span>
+                                            <span class="slider-value" id="speed-value1">100%</span>
+                                        </label>
+                                        <div class="slider-wrapper">
+                                            <div id="bpm-scale1" class="bpm-scale"></div>
+                                            <input type="range" id="speed1" min="70" max="130" value="100" class="slider">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -91,9 +102,6 @@
 
                 <div class="deck-main">
                     <div class="deck-left">
-                        <!-- Jog Wheel -->
-                        <div id="jog-wheel2" class="jog-wheel-container"></div>
-
                         <!-- Playback Controls -->
                         <div class="playback-controls">
                             <button id="playBtn2" disabled class="play-btn">
@@ -131,21 +139,35 @@
 
                         <!-- Sliders -->
                         <div class="controls">
-                            <div class="slider-group">
-                                <label class="slider-label">
-                                    <span class="slider-icon">🔊</span>
-                                    <span>Volume</span>
-                                    <span class="slider-value" id="volume-value2">100%</span>
-                                </label>
-                                <input type="range" id="volume2" min="0" max="100" value="100" class="slider">
-                            </div>
-                            <div class="slider-group">
-                                <label class="slider-label">
-                                    <span class="slider-icon">⚡</span>
-                                    <span>Speed</span>
-                                    <span class="slider-value" id="speed-value2">100%</span>
-                                </label>
-                                <input type="range" id="speed2" min="50" max="150" value="100" class="slider">
+                            <div class="controls-row">
+                                <!-- Pitch Slider (Vertical) -->
+                                <div id="pitch-slider2" class="pitch-slider-container"></div>
+
+                                <!-- Horizontal Sliders -->
+                                <div class="horizontal-sliders">
+                                    <div class="slider-group">
+                                        <label class="slider-label">
+                                            <span class="slider-icon">🔊</span>
+                                            <span>Volume</span>
+                                            <span class="slider-value" id="volume-value2">100%</span>
+                                        </label>
+                                        <div class="slider-wrapper">
+                                            <canvas id="vu-meter2" class="vu-meter-canvas"></canvas>
+                                            <input type="range" id="volume2" min="0" max="100" value="100" class="slider">
+                                        </div>
+                                    </div>
+                                    <div class="slider-group">
+                                        <label class="slider-label">
+                                            <span class="slider-icon">⚡</span>
+                                            <span>Speed</span>
+                                            <span class="slider-value" id="speed-value2">100%</span>
+                                        </label>
+                                        <div class="slider-wrapper">
+                                            <div id="bpm-scale2" class="bpm-scale"></div>
+                                            <input type="range" id="speed2" min="50" max="150" value="100" class="slider">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -163,7 +185,7 @@
     <script src="js/core/audio-context.js"></script>
     <script src="js/rendering/waveform-renderer.js"></script>
     <script src="js/core/beat-manager.js"></script>
-    <script src="js/components/jog-wheel.js"></script>
+    <script src="js/components/pitch-slider.js"></script>
     <script src="js/components/dj-deck.js"></script>
     <script src="js/app.js"></script>
 </body>
