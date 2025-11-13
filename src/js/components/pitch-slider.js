@@ -73,7 +73,8 @@ class PitchSlider {
      * Handle drag start
      */
     onDragStart(e) {
-        if (e.target !== this.thumb) return;
+        // Check if click is on thumb or its children
+        if (!this.thumb.contains(e.target)) return;
 
         e.preventDefault();
         this.isDragging = true;
@@ -106,7 +107,8 @@ class PitchSlider {
      * Handle click on track
      */
     onTrackClick(e) {
-        if (e.target === this.thumb) return;
+        // Don't handle if clicking on thumb or its children
+        if (this.thumb.contains(e.target)) return;
 
         e.preventDefault();
 

@@ -23,9 +23,10 @@ class BeatManager {
      * @param {boolean} isPlaying - Whether audio is currently playing
      * @param {number} startTime - Audio context start time if playing
      * @param {number} currentTime - Current audio context time
+     * @param {number} playbackRate - Current playback rate (speed)
      * @returns {boolean} - True if beat markers were updated
      */
-    handleTapTempo(audioBuffer, isPlaying, startTime, currentTime) {
+    handleTapTempo(audioBuffer, isPlaying, startTime, currentTime, playbackRate = 1.0) {
         const now = performance.now();
 
         // Reset if it's been too long since last tap (more than 3 seconds)
@@ -41,7 +42,7 @@ class BeatManager {
 
         // Calculate BPM once we have at least 4 taps
         if (this.tapTimes.length >= 4) {
-            this.calculateTapTempo();
+            this.calculateTapTempo(playbackRate);
         }
 
         // Update button text
@@ -77,22 +78,27 @@ class BeatManager {
     
     /**
      * Calculate BPM from tap tempo
-     * @returns {number} - Calculated BPM
+     * @param {number} playbackRate - Current playback rate to normalize BPM to 100% speed
+     * @returns {number} - Calculated BPM (normalized to 100% speed)
      */
-    calculateTapTempo() {
+    calculateTapTempo(playbackRate = 1.0) {
         // Calculate intervals between taps
         const intervals = [];
         for (let i = 1; i < this.tapTimes.length; i++) {
             intervals.push(this.tapTimes[i] - this.tapTimes[i-1]);
         }
-        
+
         // Calculate the average interval (excluding outliers)
         const validIntervals = this.filterOutliers(intervals);
         const avgInterval = validIntervals.reduce((sum, val) => sum + val, 0) / validIntervals.length;
-        
+
         // Convert to BPM (beats per minute)
-        this.bpm = Math.round(60000 / avgInterval);
-        
+        const detectedBPM = 60000 / avgInterval;
+
+        // Normalize to 100% speed (base BPM)
+        // If playing at 110% speed, detected BPM will be higher, so divide by playbackRate
+        this.bpm = Math.round(detectedBPM / playbackRate);
+
         return this.bpm;
     }
     

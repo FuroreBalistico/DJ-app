@@ -67,38 +67,52 @@ class WaveformRenderer {
         // Find the max amplitude for scaling
         const maxAmplitude = Math.max(...amplitudeData) || 1;
         
-        // Draw the waveform
+        // Draw the waveform with gradient
         ctx.beginPath();
         ctx.lineWidth = 2;
-        ctx.strokeStyle = '#007bff';
-        
+
+        // Create gradient from primary to secondary color
+        const gradient = ctx.createLinearGradient(0, 0, width, 0);
+        gradient.addColorStop(0, '#ff6b6b');    // Primary (red)
+        gradient.addColorStop(0.5, '#4ecdc4');  // Secondary (cyan)
+        gradient.addColorStop(1, '#ffe66d');    // Accent (yellow)
+
+        ctx.strokeStyle = gradient;
+
         const sliceWidth = width / samples;
         let x = 0;
-        
+
         for (let i = 0; i < samples; i++) {
             const scaledAmplitude = (amplitudeData[i] / maxAmplitude) * height;
             const y = (height / 2) - (scaledAmplitude * 0.8); // Scale to 80% of half-height
-            
+
             if (i === 0) {
                 ctx.moveTo(x, y);
             } else {
                 ctx.lineTo(x, y);
             }
-            
+
             x += sliceWidth;
         }
-        
+
         // Complete the symmetric waveform by adding the bottom half
         for (let i = samples - 1; i >= 0; i--) {
             const scaledAmplitude = (amplitudeData[i] / maxAmplitude) * height;
             const y = (height / 2) + (scaledAmplitude * 0.8); // Mirror the top half
-            
+
             ctx.lineTo(x, y);
             x -= sliceWidth;
         }
-        
+
         ctx.closePath();
-        ctx.fillStyle = 'rgba(0, 123, 255, 0.3)';
+
+        // Fill with gradient
+        const fillGradient = ctx.createLinearGradient(0, 0, width, 0);
+        fillGradient.addColorStop(0, 'rgba(255, 107, 107, 0.3)');   // Primary
+        fillGradient.addColorStop(0.5, 'rgba(78, 205, 196, 0.3)');  // Secondary
+        fillGradient.addColorStop(1, 'rgba(255, 230, 109, 0.3)');   // Accent
+
+        ctx.fillStyle = fillGradient;
         ctx.fill();
         ctx.stroke();
     }
@@ -180,27 +194,34 @@ class WaveformRenderer {
         // Find max amplitude for scaling
         const maxValue = Math.max(...amplitudeData, 0.1);
         
-        // Draw the zoomed waveform
+        // Draw the zoomed waveform with gradient
         ctx.beginPath();
         ctx.lineWidth = 2;
-        ctx.strokeStyle = '#00c2ff'; // Brighter blue for zoomed view
-        
+
+        // Create gradient for zoomed view
+        const zoomGradient = ctx.createLinearGradient(0, 0, width, 0);
+        zoomGradient.addColorStop(0, '#ff6b6b');    // Primary (red)
+        zoomGradient.addColorStop(0.5, '#4ecdc4');  // Secondary (cyan)
+        zoomGradient.addColorStop(1, '#ffe66d');    // Accent (yellow)
+
+        ctx.strokeStyle = zoomGradient;
+
         const sliceWidth = width / amplitudeData.length;
         let x = 0;
-        
+
         for (let i = 0; i < amplitudeData.length; i++) {
             const scaledAmplitude = (amplitudeData[i] / maxValue) * height;
             const y = (height / 2) - (scaledAmplitude * 0.8);
-            
+
             if (i === 0) {
                 ctx.moveTo(x, y);
             } else {
                 ctx.lineTo(x, y);
             }
-            
+
             x += sliceWidth;
         }
-        
+
         // Complete the symmetric waveform
         for (let i = amplitudeData.length - 1; i >= 0; i--) {
             const scaledAmplitude = (amplitudeData[i] / maxValue) * height;
@@ -208,8 +229,14 @@ class WaveformRenderer {
             ctx.lineTo(x, y);
             x -= sliceWidth;
         }
-        
-        ctx.fillStyle = 'rgba(0, 194, 255, 0.3)';
+
+        // Fill with gradient
+        const zoomFillGradient = ctx.createLinearGradient(0, 0, width, 0);
+        zoomFillGradient.addColorStop(0, 'rgba(255, 107, 107, 0.3)');   // Primary
+        zoomFillGradient.addColorStop(0.5, 'rgba(78, 205, 196, 0.3)');  // Secondary
+        zoomFillGradient.addColorStop(1, 'rgba(255, 230, 109, 0.3)');   // Accent
+
+        ctx.fillStyle = zoomFillGradient;
         ctx.fill();
         ctx.closePath();
         ctx.stroke();

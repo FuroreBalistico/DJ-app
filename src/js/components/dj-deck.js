@@ -115,14 +115,18 @@ class DJDeck {
         this.tapTempoBtn.addEventListener('click', () => {
             const audioCtx = AudioContextManager.getContext();
             const currentTime = audioCtx ? audioCtx.currentTime : 0;
-            
+
+            // Get current playback rate for BPM normalization
+            const currentPlaybackRate = this.basePlaybackRate * this.pitchBendMultiplier;
+
             const beatsUpdated = this.beatManager.handleTapTempo(
                 this.audioBuffer,
                 this.isPlaying,
                 this.startTime,
-                currentTime
+                currentTime,
+                currentPlaybackRate
             );
-            
+
             if (beatsUpdated && this.beatManager.getBPM() > 0) {
                 this.updateBpmDisplay();
                 this.updateBPMScale(); // Update BPM scale with detected BPM
