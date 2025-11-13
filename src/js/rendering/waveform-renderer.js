@@ -35,86 +35,141 @@ class WaveformRenderer {
     }
     
     /**
+     * Analyze frequency content of an audio chunk
+     * @param {Float32Array} chunk - Audio data chunk
+     * @returns {Object} - Frequency band energies {low, mid, high}
+     */
+    analyzeFrequencyContent(chunk) {
+        // Simple frequency analysis based on signal characteristics
+        // Low frequencies have slower changes, high frequencies have faster changes
+
+        let lowEnergy = 0;
+        let midEnergy = 0;
+        let highEnergy = 0;
+
+        // Analyze rate of change (derivative) as proxy for frequency content
+        for (let i = 1; i < chunk.length; i++) {
+            const diff = Math.abs(chunk[i] - chunk[i-1]);
+            const amplitude = Math.abs(chunk[i]);
+
+            // Slow changes = low frequencies
+            if (diff < 0.01) {
+                lowEnergy += amplitude;
+            }
+            // Medium changes = mid frequencies
+            else if (diff < 0.05) {
+                midEnergy += amplitude;
+            }
+            // Fast changes = high frequencies
+            else {
+                highEnergy += amplitude;
+            }
+        }
+
+        const total = lowEnergy + midEnergy + highEnergy || 1;
+        return {
+            low: lowEnergy / total,
+            mid: midEnergy / total,
+            high: highEnergy / total
+        };
+    }
+
+    /**
+     * Get color based on frequency content
+     * @param {Object} freqContent - Frequency band energies
+     * @returns {string} - RGB color string
+     */
+    getColorFromFrequency(freqContent) {
+        // Map frequency content to colors
+        // Low (bass) = Red
+        // Mid = Green/Yellow
+        // High (treble) = Blue/Cyan
+
+        const r = Math.floor(255 * freqContent.low + 100 * freqContent.mid);
+        const g = Math.floor(100 * freqContent.low + 200 * freqContent.mid + 100 * freqContent.high);
+        const b = Math.floor(50 * freqContent.mid + 255 * freqContent.high);
+
+        return `rgb(${Math.min(r, 255)}, ${Math.min(g, 255)}, ${Math.min(b, 255)})`;
+    }
+
+    /**
      * Draw the static waveform
      * @param {AudioBuffer} audioBuffer - The decoded audio data
+     * @param {Array} beatMarkers - Optional array of beat marker objects
      */
-    drawStaticWaveform(audioBuffer) {
+    drawStaticWaveform(audioBuffer, beatMarkers = []) {
         const width = this.mainCanvas.width;
         const height = this.mainCanvas.height;
         const ctx = this.mainCtx;
-        
+
         // Clear canvas
         ctx.clearRect(0, 0, width, height);
-        
+
         // If no buffer, nothing to draw
         if (!audioBuffer) return;
-        
+
         // Get the audio data
         const rawData = audioBuffer.getChannelData(0); // Use first channel
         const samples = 200; // Number of samples to display
         const blockSize = Math.floor(rawData.length / samples);
         const amplitudeData = [];
-        
-        // Collect amplitude data
+        const colorData = [];
+
+        // Collect amplitude and frequency data
         for (let i = 0; i < samples; i++) {
+            const start = i * blockSize;
+            const end = Math.min(start + blockSize, rawData.length);
+            const chunk = rawData.slice(start, end);
+
+            // Calculate amplitude
             let sum = 0;
-            for (let j = 0; j < blockSize; j++) {
-                sum += Math.abs(rawData[(i * blockSize) + j] || 0);
+            for (let j = 0; j < chunk.length; j++) {
+                sum += Math.abs(chunk[j]);
             }
-            amplitudeData.push(sum / blockSize);
+            amplitudeData.push(sum / chunk.length);
+
+            // Analyze frequency content
+            const freqContent = this.analyzeFrequencyContent(chunk);
+            colorData.push(this.getColorFromFrequency(freqContent));
         }
-        
+
         // Find the max amplitude for scaling
         const maxAmplitude = Math.max(...amplitudeData) || 1;
-        
-        // Draw the waveform with gradient
-        ctx.beginPath();
-        ctx.lineWidth = 2;
 
-        // Create gradient from primary to secondary color
-        const gradient = ctx.createLinearGradient(0, 0, width, 0);
-        gradient.addColorStop(0, '#ff6b6b');    // Primary (red)
-        gradient.addColorStop(0.5, '#4ecdc4');  // Secondary (cyan)
-        gradient.addColorStop(1, '#ffe66d');    // Accent (yellow)
-
-        ctx.strokeStyle = gradient;
-
+        // Draw the waveform with frequency-based colors
         const sliceWidth = width / samples;
-        let x = 0;
 
+        // Draw each segment with its own color
         for (let i = 0; i < samples; i++) {
-            const scaledAmplitude = (amplitudeData[i] / maxAmplitude) * height;
-            const y = (height / 2) - (scaledAmplitude * 0.8); // Scale to 80% of half-height
+            const x = i * sliceWidth;
+            const scaledAmplitude = (amplitudeData[i] / maxAmplitude) * height * 0.8;
+            const yTop = (height / 2) - scaledAmplitude;
+            const yBottom = (height / 2) + scaledAmplitude;
 
-            if (i === 0) {
-                ctx.moveTo(x, y);
-            } else {
-                ctx.lineTo(x, y);
-            }
-
-            x += sliceWidth;
+            ctx.beginPath();
+            ctx.strokeStyle = colorData[i];
+            ctx.lineWidth = Math.max(sliceWidth * 0.8, 1);
+            ctx.moveTo(x, yTop);
+            ctx.lineTo(x, yBottom);
+            ctx.stroke();
         }
 
-        // Complete the symmetric waveform by adding the bottom half
-        for (let i = samples - 1; i >= 0; i--) {
-            const scaledAmplitude = (amplitudeData[i] / maxAmplitude) * height;
-            const y = (height / 2) + (scaledAmplitude * 0.8); // Mirror the top half
+        // Draw beat markers if available
+        if (beatMarkers && beatMarkers.length > 0 && audioBuffer) {
+            const duration = audioBuffer.duration;
 
-            ctx.lineTo(x, y);
-            x -= sliceWidth;
+            beatMarkers.forEach(beat => {
+                const beatPosition = beat.time / duration;
+                const beatX = beatPosition * width;
+
+                ctx.beginPath();
+                ctx.strokeStyle = beat.isMainBeat ? 'rgba(81, 207, 102, 0.7)' : 'rgba(255, 255, 255, 0.4)';
+                ctx.lineWidth = beat.isMainBeat ? 2 : 1;
+                ctx.moveTo(beatX, 0);
+                ctx.lineTo(beatX, height);
+                ctx.stroke();
+            });
         }
-
-        ctx.closePath();
-
-        // Fill with gradient
-        const fillGradient = ctx.createLinearGradient(0, 0, width, 0);
-        fillGradient.addColorStop(0, 'rgba(255, 107, 107, 0.3)');   // Primary
-        fillGradient.addColorStop(0.5, 'rgba(78, 205, 196, 0.3)');  // Secondary
-        fillGradient.addColorStop(1, 'rgba(255, 230, 109, 0.3)');   // Accent
-
-        ctx.fillStyle = fillGradient;
-        ctx.fill();
-        ctx.stroke();
     }
     
     /**
@@ -174,72 +229,52 @@ class WaveformRenderer {
         // Sample points for drawing
         const samples = 200;
         const samplesPerPoint = Math.max(1, Math.floor((endSample - startSample) / samples));
-        
-        // Prepare amplitude data
+
+        // Prepare amplitude and color data
         const amplitudeData = [];
-        
+        const colorData = [];
+
         for (let i = 0; i < samples; i++) {
             const sampleIndex = startSample + i * samplesPerPoint;
             if (sampleIndex >= endSample) break;
-            
+
+            // Extract chunk for this sample
+            const chunkStart = sampleIndex;
+            const chunkEnd = Math.min(sampleIndex + samplesPerPoint, rawData.length);
+            const chunk = rawData.slice(chunkStart, chunkEnd);
+
+            // Calculate amplitude
             let maxAmplitude = 0;
-            for (let j = 0; j < samplesPerPoint; j++) {
-                const sampleValue = Math.abs(rawData[sampleIndex + j] || 0);
-                maxAmplitude = Math.max(maxAmplitude, sampleValue);
+            for (let j = 0; j < chunk.length; j++) {
+                maxAmplitude = Math.max(maxAmplitude, Math.abs(chunk[j]));
             }
-            
             amplitudeData.push(maxAmplitude);
+
+            // Analyze frequency content
+            const freqContent = this.analyzeFrequencyContent(chunk);
+            colorData.push(this.getColorFromFrequency(freqContent));
         }
-        
+
         // Find max amplitude for scaling
         const maxValue = Math.max(...amplitudeData, 0.1);
-        
-        // Draw the zoomed waveform with gradient
-        ctx.beginPath();
-        ctx.lineWidth = 2;
 
-        // Create gradient for zoomed view
-        const zoomGradient = ctx.createLinearGradient(0, 0, width, 0);
-        zoomGradient.addColorStop(0, '#ff6b6b');    // Primary (red)
-        zoomGradient.addColorStop(0.5, '#4ecdc4');  // Secondary (cyan)
-        zoomGradient.addColorStop(1, '#ffe66d');    // Accent (yellow)
-
-        ctx.strokeStyle = zoomGradient;
-
+        // Draw the zoomed waveform with frequency-based colors
         const sliceWidth = width / amplitudeData.length;
-        let x = 0;
 
+        // Draw each segment with its own color
         for (let i = 0; i < amplitudeData.length; i++) {
-            const scaledAmplitude = (amplitudeData[i] / maxValue) * height;
-            const y = (height / 2) - (scaledAmplitude * 0.8);
+            const x = i * sliceWidth;
+            const scaledAmplitude = (amplitudeData[i] / maxValue) * height * 0.8;
+            const yTop = (height / 2) - scaledAmplitude;
+            const yBottom = (height / 2) + scaledAmplitude;
 
-            if (i === 0) {
-                ctx.moveTo(x, y);
-            } else {
-                ctx.lineTo(x, y);
-            }
-
-            x += sliceWidth;
+            ctx.beginPath();
+            ctx.strokeStyle = colorData[i];
+            ctx.lineWidth = Math.max(sliceWidth * 0.8, 1);
+            ctx.moveTo(x, yTop);
+            ctx.lineTo(x, yBottom);
+            ctx.stroke();
         }
-
-        // Complete the symmetric waveform
-        for (let i = amplitudeData.length - 1; i >= 0; i--) {
-            const scaledAmplitude = (amplitudeData[i] / maxValue) * height;
-            const y = (height / 2) + (scaledAmplitude * 0.8);
-            ctx.lineTo(x, y);
-            x -= sliceWidth;
-        }
-
-        // Fill with gradient
-        const zoomFillGradient = ctx.createLinearGradient(0, 0, width, 0);
-        zoomFillGradient.addColorStop(0, 'rgba(255, 107, 107, 0.3)');   // Primary
-        zoomFillGradient.addColorStop(0.5, 'rgba(78, 205, 196, 0.3)');  // Secondary
-        zoomFillGradient.addColorStop(1, 'rgba(255, 230, 109, 0.3)');   // Accent
-
-        ctx.fillStyle = zoomFillGradient;
-        ctx.fill();
-        ctx.closePath();
-        ctx.stroke();
         
         // Add center position indicator (blue bar) as a DOM element
         const centerIndicator = document.createElement('div');

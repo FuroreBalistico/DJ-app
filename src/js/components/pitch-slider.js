@@ -19,7 +19,7 @@ class PitchSlider {
 
         // Configuration
         this.maxPitchBend = 0.08; // Maximum pitch bend (+/- 8%)
-        this.resetSpeed = 0.15; // How quickly it returns to center
+        this.resetSpeed = 0.5; // How quickly it returns to center (increased for responsiveness)
 
         this.init();
     }
@@ -188,12 +188,12 @@ class PitchSlider {
      */
     startResetLoop() {
         const animate = () => {
-            if (!this.isDragging && Math.abs(this.currentValue) > 0.001) {
-                // Move towards zero
+            if (!this.isDragging && Math.abs(this.currentValue) > 0.005) {
+                // Move towards zero faster
                 this.currentValue *= (1 - this.resetSpeed);
 
-                // Snap to zero if very close
-                if (Math.abs(this.currentValue) < 0.001) {
+                // Snap to zero if very close (increased threshold for faster snap)
+                if (Math.abs(this.currentValue) < 0.005) {
                     this.currentValue = 0;
                 }
 
