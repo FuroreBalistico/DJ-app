@@ -20,71 +20,77 @@
                 </div>
 
                 <div class="deck-main">
-                    <div class="deck-left">
-                        <!-- Playback Controls -->
-                        <div class="playback-controls">
-                            <button id="playBtn1" disabled class="play-btn">
-                                <span class="btn-icon">▶</span>
-                                <span class="btn-text">Play</span>
-                            </button>
-                            <button id="tapTempo1" class="tap-tempo-btn">
-                                <span class="btn-icon">🎵</span>
-                                <span class="btn-text">Tap Tempo</span>
-                            </button>
-                        </div>
-
-                        <!-- File Input -->
+                    <!-- Top Controls (Horizontal) -->
+                    <div class="top-controls">
+                        <button id="playBtn1" disabled class="play-btn">
+                            <span class="btn-icon">▶</span>
+                            <span class="btn-text">Play</span>
+                        </button>
+                        <button id="cueBtn1" disabled class="cue-btn">
+                            <span class="btn-icon">🔖</span>
+                            <span class="btn-text">Cue</span>
+                        </button>
+                        <button id="syncBtn1" disabled class="sync-btn">
+                            <span class="btn-icon">🔄</span>
+                            <span class="btn-text">Sync</span>
+                        </button>
+                        <button id="tapTempo1" class="tap-tempo-btn">
+                            <span class="btn-icon">🎵</span>
+                            <span class="btn-text">Tap</span>
+                        </button>
                         <label for="audio1" class="file-input-label">
                             <span class="file-icon">📁</span>
-                            <span class="file-text">Load Track</span>
+                            <span class="file-text">Load</span>
                             <input type="file" id="audio1" accept="audio/*" class="file-input">
                         </label>
+                        <button id="fxBtn1" class="fx-btn">
+                            <span class="btn-icon">✨</span>
+                            <span class="btn-text">FX</span>
+                        </button>
                     </div>
 
-                    <div class="deck-right">
-                        <!-- Waveforms -->
-                        <div class="waveform-container">
-                            <div class="no-waveform" id="no-waveform1">Load a track to see waveform</div>
-                            <canvas id="waveform1" class="waveform-canvas"></canvas>
+                    <!-- Waveforms -->
+                    <div class="waveform-container">
+                        <div class="no-waveform" id="no-waveform1">Load a track to see waveform</div>
+                        <canvas id="waveform1" class="waveform-canvas"></canvas>
+                    </div>
+                    <div class="dual-view-container">
+                        <div class="zoom-waveform" id="zoom-container1">
+                            <canvas id="zoom-waveform1" class="waveform-canvas"></canvas>
                         </div>
-                        <div class="dual-view-container">
-                            <div class="zoom-waveform" id="zoom-container1">
-                                <canvas id="zoom-waveform1" class="waveform-canvas"></canvas>
-                            </div>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress" id="progress1"></div>
-                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress" id="progress1"></div>
+                    </div>
 
-                        <!-- Sliders -->
-                        <div class="controls">
-                            <div class="controls-row">
-                                <!-- Pitch Slider (Vertical) -->
-                                <div id="pitch-slider1" class="pitch-slider-container"></div>
+                    <!-- Sliders -->
+                    <div class="controls">
+                        <div class="controls-row">
+                            <!-- Pitch Slider (Vertical) -->
+                            <div id="pitch-slider1" class="pitch-slider-container"></div>
 
-                                <!-- Horizontal Sliders -->
-                                <div class="horizontal-sliders">
-                                    <div class="slider-group">
-                                        <label class="slider-label">
-                                            <span class="slider-icon">🔊</span>
-                                            <span>Volume</span>
-                                            <span class="slider-value" id="volume-value1">100%</span>
-                                        </label>
-                                        <div class="slider-wrapper">
-                                            <canvas id="vu-meter1" class="vu-meter-canvas"></canvas>
-                                            <input type="range" id="volume1" min="0" max="100" value="100" class="slider">
-                                        </div>
+                            <!-- Horizontal Sliders -->
+                            <div class="horizontal-sliders">
+                                <div class="slider-group">
+                                    <label class="slider-label">
+                                        <span class="slider-icon">🔊</span>
+                                        <span>Volume</span>
+                                        <span class="slider-value" id="volume-value1">100%</span>
+                                    </label>
+                                    <div class="slider-wrapper">
+                                        <canvas id="vu-meter1" class="vu-meter-canvas"></canvas>
+                                        <input type="range" id="volume1" min="0" max="100" value="100" class="slider">
                                     </div>
-                                    <div class="slider-group">
-                                        <label class="slider-label">
-                                            <span class="slider-icon">⚡</span>
-                                            <span>Speed</span>
-                                            <span class="slider-value" id="speed-value1">100%</span>
-                                        </label>
-                                        <div class="slider-wrapper">
-                                            <div id="bpm-scale1" class="bpm-scale"></div>
-                                            <input type="range" id="speed1" min="70" max="130" value="100" class="slider">
-                                        </div>
+                                </div>
+                                <div class="slider-group">
+                                    <label class="slider-label">
+                                        <span class="slider-icon">⚡</span>
+                                        <span>Speed</span>
+                                        <span class="slider-value" id="speed-value1">100%</span>
+                                    </label>
+                                    <div class="slider-wrapper">
+                                        <input type="range" id="speed1" min="70" max="130" value="100" class="slider">
+                                        <div id="bpm-scale1" class="bpm-scale"></div>
                                     </div>
                                 </div>
                             </div>
@@ -101,71 +107,77 @@
                 </div>
 
                 <div class="deck-main">
-                    <div class="deck-left">
-                        <!-- Playback Controls -->
-                        <div class="playback-controls">
-                            <button id="playBtn2" disabled class="play-btn">
-                                <span class="btn-icon">▶</span>
-                                <span class="btn-text">Play</span>
-                            </button>
-                            <button id="tapTempo2" class="tap-tempo-btn">
-                                <span class="btn-icon">🎵</span>
-                                <span class="btn-text">Tap Tempo</span>
-                            </button>
-                        </div>
-
-                        <!-- File Input -->
+                    <!-- Top Controls (Horizontal) -->
+                    <div class="top-controls">
+                        <button id="playBtn2" disabled class="play-btn">
+                            <span class="btn-icon">▶</span>
+                            <span class="btn-text">Play</span>
+                        </button>
+                        <button id="cueBtn2" disabled class="cue-btn">
+                            <span class="btn-icon">🔖</span>
+                            <span class="btn-text">Cue</span>
+                        </button>
+                        <button id="syncBtn2" disabled class="sync-btn">
+                            <span class="btn-icon">🔄</span>
+                            <span class="btn-text">Sync</span>
+                        </button>
+                        <button id="tapTempo2" class="tap-tempo-btn">
+                            <span class="btn-icon">🎵</span>
+                            <span class="btn-text">Tap</span>
+                        </button>
                         <label for="audio2" class="file-input-label">
                             <span class="file-icon">📁</span>
-                            <span class="file-text">Load Track</span>
+                            <span class="file-text">Load</span>
                             <input type="file" id="audio2" accept="audio/*" class="file-input">
                         </label>
+                        <button id="fxBtn2" class="fx-btn">
+                            <span class="btn-icon">✨</span>
+                            <span class="btn-text">FX</span>
+                        </button>
                     </div>
 
-                    <div class="deck-right">
-                        <!-- Waveforms -->
-                        <div class="waveform-container">
-                            <div class="no-waveform" id="no-waveform2">Load a track to see waveform</div>
-                            <canvas id="waveform2" class="waveform-canvas"></canvas>
+                    <!-- Waveforms -->
+                    <div class="waveform-container">
+                        <div class="no-waveform" id="no-waveform2">Load a track to see waveform</div>
+                        <canvas id="waveform2" class="waveform-canvas"></canvas>
+                    </div>
+                    <div class="dual-view-container">
+                        <div class="zoom-waveform" id="zoom-container2">
+                            <canvas id="zoom-waveform2" class="waveform-canvas"></canvas>
                         </div>
-                        <div class="dual-view-container">
-                            <div class="zoom-waveform" id="zoom-container2">
-                                <canvas id="zoom-waveform2" class="waveform-canvas"></canvas>
-                            </div>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress" id="progress2"></div>
-                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress" id="progress2"></div>
+                    </div>
 
-                        <!-- Sliders -->
-                        <div class="controls">
-                            <div class="controls-row">
-                                <!-- Pitch Slider (Vertical) -->
-                                <div id="pitch-slider2" class="pitch-slider-container"></div>
+                    <!-- Sliders -->
+                    <div class="controls">
+                        <div class="controls-row">
+                            <!-- Pitch Slider (Vertical) -->
+                            <div id="pitch-slider2" class="pitch-slider-container"></div>
 
-                                <!-- Horizontal Sliders -->
-                                <div class="horizontal-sliders">
-                                    <div class="slider-group">
-                                        <label class="slider-label">
-                                            <span class="slider-icon">🔊</span>
-                                            <span>Volume</span>
-                                            <span class="slider-value" id="volume-value2">100%</span>
-                                        </label>
-                                        <div class="slider-wrapper">
-                                            <canvas id="vu-meter2" class="vu-meter-canvas"></canvas>
-                                            <input type="range" id="volume2" min="0" max="100" value="100" class="slider">
-                                        </div>
+                            <!-- Horizontal Sliders -->
+                            <div class="horizontal-sliders">
+                                <div class="slider-group">
+                                    <label class="slider-label">
+                                        <span class="slider-icon">🔊</span>
+                                        <span>Volume</span>
+                                        <span class="slider-value" id="volume-value2">100%</span>
+                                    </label>
+                                    <div class="slider-wrapper">
+                                        <canvas id="vu-meter2" class="vu-meter-canvas"></canvas>
+                                        <input type="range" id="volume2" min="0" max="100" value="100" class="slider">
                                     </div>
-                                    <div class="slider-group">
-                                        <label class="slider-label">
-                                            <span class="slider-icon">⚡</span>
-                                            <span>Speed</span>
-                                            <span class="slider-value" id="speed-value2">100%</span>
-                                        </label>
-                                        <div class="slider-wrapper">
-                                            <div id="bpm-scale2" class="bpm-scale"></div>
-                                            <input type="range" id="speed2" min="50" max="150" value="100" class="slider">
-                                        </div>
+                                </div>
+                                <div class="slider-group">
+                                    <label class="slider-label">
+                                        <span class="slider-icon">⚡</span>
+                                        <span>Speed</span>
+                                        <span class="slider-value" id="speed-value2">100%</span>
+                                    </label>
+                                    <div class="slider-wrapper">
+                                        <input type="range" id="speed2" min="70" max="130" value="100" class="slider">
+                                        <div id="bpm-scale2" class="bpm-scale"></div>
                                     </div>
                                 </div>
                             </div>
