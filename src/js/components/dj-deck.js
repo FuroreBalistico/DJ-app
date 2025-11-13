@@ -21,21 +21,9 @@ class DJDeck {
         this.basePlaybackRate = 1.0; // Base playback rate from speed slider
         this.pitchBendMultiplier = 1.0; // Temporary pitch bend from jog wheel
 
-        // Cue point
-        this.cuePoint = 0;
-        this.hasCuePoint = false;
-
-        // Effects
-        this.filterNode = null;
-        this.fxActive = false;
-        this.fxType = 'lowpass'; // lowpass or highpass
-
         // DOM Elements
         this.fileInput = document.getElementById(`audio${deckNumber}`);
         this.playBtn = document.getElementById(`playBtn${deckNumber}`);
-        this.cueBtn = document.getElementById(`cueBtn${deckNumber}`);
-        this.syncBtn = document.getElementById(`syncBtn${deckNumber}`);
-        this.fxBtn = document.getElementById(`fxBtn${deckNumber}`);
         this.tapTempoBtn = document.getElementById(`tapTempo${deckNumber}`);
         this.volumeSlider = document.getElementById(`volume${deckNumber}`);
         this.speedSlider = document.getElementById(`speed${deckNumber}`);
@@ -128,15 +116,11 @@ class DJDeck {
             const audioCtx = AudioContextManager.getContext();
             const currentTime = audioCtx ? audioCtx.currentTime : 0;
 
-            // Get current playback rate for BPM normalization
-            const currentPlaybackRate = this.basePlaybackRate * this.pitchBendMultiplier;
-
             const beatsUpdated = this.beatManager.handleTapTempo(
                 this.audioBuffer,
                 this.isPlaying,
                 this.startTime,
-                currentTime,
-                currentPlaybackRate
+                currentTime
             );
 
             if (beatsUpdated && this.beatManager.getBPM() > 0) {
@@ -145,7 +129,7 @@ class DJDeck {
 
                 // If not playing, update waveform with beat markers
                 if (!this.isPlaying && this.audioBuffer) {
-                    this.waveformRenderer.drawStaticWaveform(this.audioBuffer);
+                    this.waveformRenderer.drawStaticWaveform(this.audioBuffer, this.beatManager.getBeatMarkers());
 
                     if (this.pauseTime > 0) {
                         const position = this.pauseTime / this.audioBuffer.duration;
@@ -159,48 +143,6 @@ class DJDeck {
                     }
                 }
             }
-        });
-
-        // Cue button
-        this.cueBtn.addEventListener('click', () => {
-            if (!this.audioBuffer) return;
-
-            if (this.isPlaying) {
-                // If playing, set cue point at current position
-                const audioCtx = AudioContextManager.getContext();
-                const elapsed = audioCtx.currentTime - this.startTime;
-                this.cuePoint = elapsed;
-                this.hasCuePoint = true;
-                this.cueBtn.classList.add('active');
-            } else {
-                // If not playing, jump to cue point if set
-                if (this.hasCuePoint) {
-                    this.pauseTime = this.cuePoint;
-                    this.waveformRenderer.drawStaticWaveform(this.audioBuffer);
-                    this.waveformRenderer.drawPositionIndicator(this.pauseTime / this.audioBuffer.duration);
-                    this.waveformRenderer.drawZoomedWaveform(
-                        this.audioBuffer,
-                        this.pauseTime / this.audioBuffer.duration,
-                        this.pauseTime,
-                        this.beatManager.getBeatMarkers()
-                    );
-
-                    // Update progress bar
-                    const progress = (this.pauseTime / this.audioBuffer.duration) * 100;
-                    this.progressBar.style.width = `${Math.min(progress, 100)}%`;
-                }
-            }
-        });
-
-        // Sync button
-        this.syncBtn.addEventListener('click', () => {
-            if (!this.audioBuffer) return;
-            this.syncWithOtherDeck();
-        });
-
-        // FX button
-        this.fxBtn.addEventListener('click', () => {
-            this.toggleEffects();
         });
 
         // Waveform navigation
@@ -234,7 +176,7 @@ class DJDeck {
             } else {
                 // Update position without playing
                 this.pauseTime = jumpTime;
-                this.waveformRenderer.drawStaticWaveform(this.audioBuffer);
+                this.waveformRenderer.drawStaticWaveform(this.audioBuffer, this.beatManager.getBeatMarkers());
                 this.waveformRenderer.drawPositionIndicator(jumpTime / this.audioBuffer.duration);
                 
                 // Draw zoomed waveform at clicked position
@@ -335,16 +277,9 @@ class DJDeck {
             // Update UI
             this.trackInfo.textContent = file.name;
             this.playBtn.disabled = false;
-            this.cueBtn.disabled = false;
-            this.syncBtn.disabled = false;
             this.playBtn.textContent = "Play";
             this.isPlaying = false;
             this.pauseTime = 0;
-
-            // Reset cue point
-            this.cuePoint = 0;
-            this.hasCuePoint = false;
-            this.cueBtn.classList.remove('active');
 
             // Reset beat manager
             this.beatManager.resetBeatMarkers();
@@ -354,8 +289,8 @@ class DJDeck {
             this.waveformCanvas.style.display = 'block';
             this.noWaveformDiv.style.display = 'none';
 
-            // Draw static waveform
-            this.waveformRenderer.drawStaticWaveform(this.audioBuffer);
+            // Draw static waveform (no beat markers yet at load time)
+            this.waveformRenderer.drawStaticWaveform(this.audioBuffer, []);
 
         } catch (error) {
             console.error('Unexpected error loading track:', error);
@@ -415,7 +350,7 @@ class DJDeck {
             this.pauseTime = elapsed;
             
             // Redraw waveforms at pause position
-            this.waveformRenderer.drawStaticWaveform(this.audioBuffer);
+            this.waveformRenderer.drawStaticWaveform(this.audioBuffer, this.beatManager.getBeatMarkers());
             this.waveformRenderer.drawPositionIndicator(this.pauseTime / this.audioBuffer.duration);
             this.waveformRenderer.drawZoomedWaveform(
                 this.audioBuffer,
@@ -443,7 +378,7 @@ class DJDeck {
             }
             
             // Redraw static waveform
-            this.waveformRenderer.drawStaticWaveform(this.audioBuffer);
+            this.waveformRenderer.drawStaticWaveform(this.audioBuffer, this.beatManager.getBeatMarkers());
             
             // Clear beat markers in zoom view
             const beatElements = this.zoomContainer.querySelectorAll(
@@ -478,7 +413,7 @@ class DJDeck {
         }
         
         // Update waveforms
-        this.waveformRenderer.drawStaticWaveform(this.audioBuffer);
+        this.waveformRenderer.drawStaticWaveform(this.audioBuffer, this.beatManager.getBeatMarkers());
         this.waveformRenderer.drawPositionIndicator(position);
         this.waveformRenderer.drawZoomedWaveform(
             this.audioBuffer,
@@ -537,7 +472,7 @@ class DJDeck {
     resize() {
         this.waveformRenderer.resize();
         if (this.audioBuffer) {
-            this.waveformRenderer.drawStaticWaveform(this.audioBuffer);
+            this.waveformRenderer.drawStaticWaveform(this.audioBuffer, this.beatManager.getBeatMarkers());
 
             if (this.pauseTime > 0 && !this.isPlaying) {
                 const position = this.pauseTime / this.audioBuffer.duration;
@@ -659,118 +594,6 @@ class DJDeck {
             }
 
             this.bpmScale.appendChild(marker);
-        }
-    }
-
-    /**
-     * Sync this deck with the other deck
-     */
-    syncWithOtherDeck() {
-        // Get the other deck instance
-        const otherDeckNumber = this.deckNumber === 1 ? 2 : 1;
-        const otherDeck = window[`deck${otherDeckNumber}`];
-
-        if (!otherDeck || !otherDeck.beatManager) {
-            console.warn('Other deck not available for sync');
-            return;
-        }
-
-        const otherBPM = otherDeck.beatManager.getBPM();
-        const thisBPM = this.beatManager.getBPM();
-
-        if (!otherBPM || otherBPM === 0) {
-            console.warn('Other deck has no BPM set');
-            return;
-        }
-
-        // Calculate the speed adjustment needed
-        if (thisBPM && thisBPM > 0) {
-            // Both decks have BPM, match speeds
-            const speedRatio = otherBPM / thisBPM;
-            const newSpeed = Math.round(this.basePlaybackRate * speedRatio * 100);
-
-            // Clamp to slider range
-            const minSpeed = parseInt(this.speedSlider.min);
-            const maxSpeed = parseInt(this.speedSlider.max);
-            const clampedSpeed = Math.max(minSpeed, Math.min(maxSpeed, newSpeed));
-
-            // Update speed slider
-            this.speedSlider.value = clampedSpeed;
-            this.basePlaybackRate = clampedSpeed / 100;
-            this.updatePlaybackRate();
-            this.speedValue.textContent = `${clampedSpeed}%`;
-            this.updateBPMScale();
-
-            // Visual feedback
-            this.syncBtn.classList.add('active');
-            setTimeout(() => {
-                this.syncBtn.classList.remove('active');
-            }, 1000);
-
-            console.log(`Synced: ${thisBPM} BPM → ${otherBPM} BPM (speed: ${clampedSpeed}%)`);
-        } else {
-            console.warn('This deck has no BPM set. Use tap tempo first.');
-        }
-    }
-
-    /**
-     * Toggle audio effects
-     */
-    toggleEffects() {
-        const audioCtx = AudioContextManager.getContext();
-        if (!audioCtx) return;
-
-        this.fxActive = !this.fxActive;
-
-        if (this.fxActive) {
-            // Create filter if not exists
-            if (!this.filterNode) {
-                this.filterNode = audioCtx.createBiquadFilter();
-                this.filterNode.type = this.fxType;
-                this.filterNode.frequency.value = 1000;
-                this.filterNode.Q.value = 1;
-            }
-
-            // Insert filter into audio chain
-            // Reconnect: analyserNode -> filterNode -> gainNode
-            this.analyserNode.disconnect();
-            this.analyserNode.connect(this.filterNode);
-            this.filterNode.connect(this.gainNode);
-
-            // Animate filter frequency
-            this.animateFilter();
-
-            // Visual feedback
-            this.fxBtn.classList.add('active');
-        } else {
-            // Remove filter from chain
-            if (this.filterNode) {
-                this.analyserNode.disconnect();
-                this.filterNode.disconnect();
-                this.analyserNode.connect(this.gainNode);
-            }
-
-            // Visual feedback
-            this.fxBtn.classList.remove('active');
-        }
-    }
-
-    /**
-     * Animate filter effect
-     */
-    animateFilter() {
-        if (!this.fxActive || !this.filterNode) return;
-
-        const audioCtx = AudioContextManager.getContext();
-        const now = audioCtx.currentTime;
-
-        // Oscillate filter frequency
-        const frequency = 1000 + Math.sin(now * 2) * 800;
-        this.filterNode.frequency.setValueAtTime(frequency, now);
-
-        // Continue animation
-        if (this.fxActive) {
-            requestAnimationFrame(() => this.animateFilter());
         }
     }
 }

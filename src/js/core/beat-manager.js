@@ -23,10 +23,9 @@ class BeatManager {
      * @param {boolean} isPlaying - Whether audio is currently playing
      * @param {number} startTime - Audio context start time if playing
      * @param {number} currentTime - Current audio context time
-     * @param {number} playbackRate - Current playback rate (speed)
      * @returns {boolean} - True if beat markers were updated
      */
-    handleTapTempo(audioBuffer, isPlaying, startTime, currentTime, playbackRate = 1.0) {
+    handleTapTempo(audioBuffer, isPlaying, startTime, currentTime) {
         const now = performance.now();
 
         // Reset if it's been too long since last tap (more than 3 seconds)
@@ -42,7 +41,7 @@ class BeatManager {
 
         // Calculate BPM once we have at least 4 taps
         if (this.tapTimes.length >= 4) {
-            this.calculateTapTempo(playbackRate);
+            this.calculateTapTempo();
         }
 
         // Update button text
@@ -78,10 +77,9 @@ class BeatManager {
     
     /**
      * Calculate BPM from tap tempo
-     * @param {number} playbackRate - Current playback rate to normalize BPM to 100% speed
-     * @returns {number} - Calculated BPM (normalized to 100% speed)
+     * @returns {number} - Calculated BPM (actual measured BPM from user taps)
      */
-    calculateTapTempo(playbackRate = 1.0) {
+    calculateTapTempo() {
         // Calculate intervals between taps
         const intervals = [];
         for (let i = 1; i < this.tapTimes.length; i++) {
@@ -93,11 +91,9 @@ class BeatManager {
         const avgInterval = validIntervals.reduce((sum, val) => sum + val, 0) / validIntervals.length;
 
         // Convert to BPM (beats per minute)
+        // This is the ACTUAL measured BPM from user's taps, not adjusted for playback speed
         const detectedBPM = 60000 / avgInterval;
-
-        // Normalize to 100% speed (base BPM)
-        // If playing at 110% speed, detected BPM will be higher, so divide by playbackRate
-        this.bpm = Math.round(detectedBPM / playbackRate);
+        this.bpm = Math.round(detectedBPM);
 
         return this.bpm;
     }
