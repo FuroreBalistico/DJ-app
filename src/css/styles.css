@@ -102,6 +102,26 @@ body {
     min-width: 80px;
 }
 
+.temp-speed-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    user-select: none;
+    min-width: auto !important;
+}
+
+.temp-speed-toggle input[type="checkbox"] {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+}
+
+.temp-speed-toggle span {
+    white-space: nowrap;
+}
+
 input[type="file"] {
     display: block;
     width: 100%;

@@ -18,13 +18,19 @@ class DJDeck {
         this.animationFrame = null;
         this.pauseTime = 0;
         this.startTime = 0;
-        
+
+        // Temporary speed control
+        this.tempSpeedEnabled = false;
+        this.savedSpeed = 100;
+        this.isDraggingSpeed = false;
+
         // DOM Elements
         this.fileInput = document.getElementById(`audio${deckNumber}`);
         this.playBtn = document.getElementById(`playBtn${deckNumber}`);
         this.tapTempoBtn = document.getElementById(`tapTempo${deckNumber}`);
         this.volumeSlider = document.getElementById(`volume${deckNumber}`);
         this.speedSlider = document.getElementById(`speed${deckNumber}`);
+        this.tempSpeedToggle = document.getElementById(`tempSpeed${deckNumber}`);
         this.trackInfo = document.getElementById(`track-info${deckNumber}`);
         this.progressBar = document.getElementById(`progress${deckNumber}`);
         this.waveformCanvas = document.getElementById(`waveform${deckNumber}`);
@@ -78,11 +84,57 @@ class DJDeck {
                 this.gainNode.gain.value = e.target.value / 100;
             }
         });
-        
-        // Speed slider
+
+        // Temp Speed toggle
+        this.tempSpeedToggle.addEventListener('change', (e) => {
+            this.tempSpeedEnabled = e.target.checked;
+            if (this.tempSpeedEnabled) {
+                // Save current speed when enabling temp mode
+                this.savedSpeed = parseFloat(this.speedSlider.value);
+            }
+        });
+
+        // Speed slider - mousedown/touchstart: save current speed
+        this.speedSlider.addEventListener('mousedown', () => {
+            if (this.tempSpeedEnabled) {
+                this.isDraggingSpeed = true;
+                this.savedSpeed = parseFloat(this.speedSlider.value);
+            }
+        });
+
+        this.speedSlider.addEventListener('touchstart', () => {
+            if (this.tempSpeedEnabled) {
+                this.isDraggingSpeed = true;
+                this.savedSpeed = parseFloat(this.speedSlider.value);
+            }
+        });
+
+        // Speed slider - input: apply temporary speed change
         this.speedSlider.addEventListener('input', (e) => {
             if (this.audioSource) {
                 this.audioSource.playbackRate.value = e.target.value / 100;
+            }
+        });
+
+        // Speed slider - mouseup/touchend: restore saved speed if in temp mode
+        const restoreSpeed = () => {
+            if (this.tempSpeedEnabled && this.isDraggingSpeed) {
+                this.isDraggingSpeed = false;
+                // Restore saved speed
+                this.speedSlider.value = this.savedSpeed;
+                if (this.audioSource) {
+                    this.audioSource.playbackRate.value = this.savedSpeed / 100;
+                }
+            }
+        };
+
+        this.speedSlider.addEventListener('mouseup', restoreSpeed);
+        this.speedSlider.addEventListener('touchend', restoreSpeed);
+
+        // Also restore if mouse/touch leaves the slider while dragging
+        this.speedSlider.addEventListener('mouseleave', () => {
+            if (this.tempSpeedEnabled && this.isDraggingSpeed) {
+                restoreSpeed();
             }
         });
         
